@@ -1,49 +1,79 @@
 #pragma once 
 
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
 #include "vector.h"
 
-#define TOKENS_TABLE(X)       \
-    X(T_OPARENTHESES, '(')    \
-    X(T_CPARENTHESES, ')')    \
-    X(T_CIRCUMFLEX, '^')      \
-    X(T_BACKSLASH, '\\')      \
-    X(T_OBRACKET, '{')        \
-    X(T_CBRACKET, '}')        \
-    X(T_MINUSS, '-')          \
-    X(T_DOLARS, '$')          \
-    X(T_PLUSS, '+')           \
-    X(T_QMARK, '?')           \
-    X(T_STAR, '*')            \
-    X(T_PIPE, '|')            \
-    X(T_DOT, '.')             \
-    X(T_EOF, '\0')
+#define CHAR_TOKENS(X)          \
+    X(OPEN_PARENTHESES, '(')    \
+    X(CLOSE_PARENTHESES, ')')   \
+    X(CIRCUMFLEX, '^')          \
+    X(DOLAR, '$')               \
+    X(PLUS, '+')                \
+    X(QMARK, '?')               \
+    X(STAR, '*')                \
+    X(PIPE, '|')                \
+    X(WILDCARD, '.')            
 
-typedef enum{
-    #define X(token, ch) token = ch, 
-        TOKENS_TABLE(X)
-    #undef X 
-    T_CHAR
-}TokenType;
+#define STR_TOKENS(X)               \
+    X(RANGED_CHAR, "[%c-%c]")       \
+    X(ANY_DIGIT, "\\d")             \
+    X(ANY_NON_DIGIT, "\\D")         \
+    X(ANY_WHITESPACE, "\\s")        \
+    X(ANY_NON_WHITESPACE, "\\S")    \
+    X(QUANTIFIER_EXACT, "{%d}")     \
+    X(RANGED_QUANTIFIER, "{%d,%d}") \
+    X(QUANTIFIER_MIN, "{%d,}")      
 
-typedef struct Token Token;
-struct Token{
-    TokenType type;        
-    char val;
+enum{
+    TOKEN_STRING_SIZE     = 10,
+    SCANNER_EMPTY_TAPE    = 1,
+    SCANNER_INVALID_TOKEN = 2
 };
 
+typedef enum{
+    #define X(token_name, token_symbol) token_name, 
+        CHAR_TOKENS(X)
+        STR_TOKENS(X)
+    #undef X 
+    SYMBOL,
+    EOT
+}TokenClass;
 
-typedef struct Scanner Scanner;
+typedef enum{
+    CHAR,
+    RANGE,
+    STRING
+}TokenAttr;
 
-Vector* yar_scan(const char* pattern);
+typedef struct{
+    TokenClass class;
+    TokenAttr  attr;
+    union{
+        char st[TOKEN_STRING_SIZE];
+        struct{
+            int start, end;
+        };
+        char ch;
+    };
+}Token;
+
+typedef struct{
+    int     state;
+    size_t  index;
+    char    *tape; 
+    Vector  *tokens; 
+}Scanner;
+
+#ifdef YAR_DEBUG
+
+const char* yar_token_to_string(Token token);
+
+#endif
+
+Vector* yar_scan(const char *pattern);
 
 static Scanner scanner_construct(const char *pattern);
 
-static int scanner_consume(Scanner *scanner);
-
-
+static void scanner_consume(Scanner *scanner);
 
 
 

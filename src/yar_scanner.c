@@ -1,21 +1,133 @@
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <stdio.h>
 #include "yar_scanner.h"
 
-enum{
-    EMPTY_TAPE = 1,
-};
+/* NOTE: Foward declaration from "yar_token_handler.h" */
+
+Token char_tokens_handler(Scanner *scanner);
+
+Token char_range_handler(Scanner *scanner);
+
+Token quantifier_handler(Scanner *scanner);
+
+Token backslash_handler(Scanner *scanner);
+
+#ifdef YAR_DEBUG
+
+/* NOTE: This function is unsafe and can cause
+ * overflow, so it should be used just in debug 
+ * cases.
+ */
+const char* yar_token_to_string(
+    Token token
+){
+    #define TO_STR(X) #X
+
+    enum{
+        BUFFER_SIZE = 50
+    };
+    
+    #define X(token_name, token_symbol)                     \
+        static char* token_name##_VAR = TO_STR(token_name);
+
+        CHAR_TOKENS(X)
+    
+    #undef X 
+
+    static char *ANY_DIGIT_VAR          = TO_STR(ANY_DIGIT);
+    static char *ANY_NON_DIGIT_VAR      = TO_STR(ANY_NON_DIGIT);
+    static char *ANY_WHITESPACE_VAR     = TO_STR(ANY_WHITESPACE);
+    static char *ANY_NON_WHITESPACE_VAR = TO_STR(ANY_NON_WHITESPACE);
+    static char *EOT_VAR                = TO_STR(EOT);
+
+    switch(
+        token.class
+    ){
+    case RANGED_CHAR:
+        static char CHAR_RANGE_VAR[BUFFER_SIZE];
+        sprintf(
+            CHAR_RANGE_VAR,
+            "%s(\"[%c-%c]\")",
+            TO_STR(CHAR_RANGE),
+            (char)token.start,
+            (char)token.end
+        );
+        return (const char*)CHAR_RANGE_VAR;
+    case QUANTIFIER_EXACT:
+        static char QUANTIFIER_EXACT_VAR[BUFFER_SIZE];
+        sprintf(
+            QUANTIFIER_EXACT_VAR,
+            "%s(\"{%d}\")",
+            TO_STR(QUANTIFIER_EXACT),
+            token.start
+        );
+        return (const char*)QUANTIFIER_EXACT_VAR;
+    case RANGED_QUANTIFIER:
+        static char RANGED_QUANTIFIER_VAR[BUFFER_SIZE];
+        sprintf(
+            RANGED_QUANTIFIER_VAR,
+            "%s(\"{%d,%d}\")",
+            TO_STR(RANGED_QUANTIFIER),
+            token.start,
+            token.end
+        );
+        return (const char*)RANGED_QUANTIFIER_VAR;
+    case QUANTIFIER_MIN:
+        static char QUANTIFIER_MIN_VAR[BUFFER_SIZE];
+        sprintf(
+            QUANTIFIER_MIN_VAR,
+            "%s(\"{%d,}\")",
+            TO_STR(QUANTIFIER_MIN),
+            token.start
+        );
+
+        return (const char*)QUANTIFIER_MIN_VAR;
+    }
 
 
-struct Scanner{
-    size_t index;
-    char *tape; 
-    Vector *tokens; 
-};
+    switch (token.class)
+    {
+    #define X(token_name, token_symbol) \
+        case token_name:                \
+            return (const char*)token_name##_VAR;
+
+        CHAR_TOKENS(X)
+
+    #undef  X
+    
+    case ANY_DIGIT:
+        return (const char*)ANY_DIGIT_VAR;
+    case ANY_NON_DIGIT:
+        return (const char*)ANY_DIGIT_VAR;
+    case ANY_WHITESPACE:
+        return (const char*)ANY_WHITESPACE_VAR;
+    case ANY_NON_WHITESPACE:
+        return (const char*)ANY_NON_WHITESPACE_VAR; 
+    case EOT:
+        return (const char*)EOT_VAR;
+    default:
+        static char SYMBOL_VAR[BUFFER_SIZE];
+        sprintf(
+            SYMBOL_VAR,
+            "%s('%c')",
+            TO_STR(SYMBOL),
+            token.ch
+        );
+        return (const char*)SYMBOL_VAR;
+    }
+
+    #undef TO_STR
+}
+
+#endif
 
 Vector* yar_scan(
     const char* pattern
 ){
     if (
-        strlen(pattern) > 0
+        strlen(pattern) <= 0
     ) return NULL;
     
     assert(
@@ -26,16 +138,26 @@ Vector* yar_scan(
         pattern
     );
 
-    int scanner_state;
     do {
-        scanner_state = scanner_consume(
+        scanner_consume(
             &scanner
         );
     }while(
-        scanner_state != EMPTY_TAPE
+        scanner.state != SCANNER_EMPTY_TAPE &&
+        scanner.state != SCANNER_INVALID_TOKEN
     );
 
     free(scanner.tape);
+
+    if (
+        scanner.state == SCANNER_INVALID_TOKEN
+    ){
+        vector_destroy(
+            scanner.tokens
+        );
+        return NULL;
+    }
+
     return scanner.tokens;
 }
 
@@ -45,8 +167,9 @@ static Scanner scanner_construct(
 
     size_t pattern_size = strlen(pattern) + 1;
     Scanner scanner = {
-        .index = 0,
-        .tape = calloc(
+        .state  = 0,
+        .index  = 0,
+        .tape   = calloc(
             pattern_size, 
             sizeof(char)
         ),
@@ -68,51 +191,69 @@ static Scanner scanner_construct(
     return scanner;
 }
 
-static int scanner_consume(
+static void scanner_consume(
     Scanner *scanner
 ){
-    if (
-        scanner->index > 0 &&
-        ((Token*)vector_get(
-            scanner->tokens,
-            scanner->index - 1 
-        ))->type == T_EOF
-    ){ 
-        return EMPTY_TAPE;
-    }
-
-    char ch = scanner->tape[
+    assert(
+        scanner && 
+        scanner->tape
+    );
+    
+    char curr = scanner->tape[
         scanner->index
     ];
-    switch (ch)
-    {
-    #define X(token, ch)             \
-        case ch:{                    \
-            Token _token = (Token){  \
-                .type = token,       \
-                .val  = ch           \
-            };                       \
-            vector_append(           \
-                &scanner->tokens,    \
-                &_token              \
-            );                       \
-            break;                   \
-        }
-        TOKENS_TABLE(X)
-    #undef X
 
-        default:{
-            Token _token = (Token){
-                .type = T_CHAR,
-                .val  = ch
-            };
-            vector_append(
-                &scanner->tokens,
-                &_token
-            );
-            break;
-        }
+    if (
+        curr == '\0'
+    ){
+        Token token = (Token){
+            .class      = EOT, 
+            .attr       = CHAR,
+            .ch         = '\0'
+        };
+        vector_append(
+            &scanner->tokens,
+            &token
+        );
+        scanner->state = SCANNER_EMPTY_TAPE;
+        return;
     }
-    scanner->index ++;
-    return 0;
+
+    switch(
+        curr 
+    ){
+    case '\\':{
+        Token token = backslash_handler(scanner);
+        vector_append(
+            &scanner->tokens,
+            &token
+        );
+        break;
+    }
+    case '[':{
+        Token token = char_range_handler(scanner);
+        vector_append(
+            &scanner->tokens,
+            &token
+        );
+        break;
+    }
+    case '{':{
+        Token token = quantifier_handler(scanner);
+        vector_append(
+            &scanner->tokens,
+            &token
+        );
+        break;
+    }
+    default:{
+        Token token = char_tokens_handler(scanner);
+        vector_append(
+            &scanner->tokens,
+            &token
+        );
+        break;
+    }
+    }
+    scanner->index += 1;
 }

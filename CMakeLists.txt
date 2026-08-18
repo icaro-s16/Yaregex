@@ -36,6 +36,7 @@ set(
     LIB_SRC
     src/yar_scanner.c
     src/yar_dfa.c
+    src/yar_token_handler.c
     src/vector.c
 )
 
@@ -43,6 +44,12 @@ add_library(
     ${LIB_NAME} 
     STATIC 
     ${LIB_SRC}
+)
+
+target_compile_options(
+    ${LIB_NAME}
+    PUBLIC 
+    "-DYAR_DEBUG"
 )
 
 target_include_directories(

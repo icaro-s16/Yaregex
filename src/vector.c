@@ -3,7 +3,9 @@
 
 // Private declarations
 
-const int VEC_BASE_SIZE = 16;
+enum{
+    VEC_BASE_SIZE = 16
+};
 
 struct Vector{
     size_t capacity;
@@ -12,7 +14,9 @@ struct Vector{
     void* vector;
 };
 
-Vector* vector_construct(size_t data_type_size){
+Vector* vector_construct(
+    size_t data_type_size
+){
     if (data_type_size <= 0)
         return NULL;
     Vector* vec = malloc(sizeof(Vector));
@@ -26,20 +30,29 @@ Vector* vector_construct(size_t data_type_size){
     return vec;
 }
 
-int vector_destroy(Vector* vector){
-    if (vector == NULL)
-        return -1;
+int vector_destroy(
+    Vector* vector
+){
+    if (!vector)
+        return VEC_INVALID_PARAM;
     if (vector->vector != NULL ) free(vector->vector);
     free(vector);
     return 0;
 }
 
-static Vector* vector_resize(Vector* vector, size_t new_capacity){
-    assert(vector != NULL);
+static Vector* vector_resize(
+    Vector* vector, 
+    size_t new_capacity
+){
+    assert(vector);
     assert(new_capacity > 0);
     
     vector->capacity = new_capacity;
-    void *new_vec = (void*)reallocarray(vector->vector, vector->capacity, vector->data_type_size);
+    void *new_vec = (void*)reallocarray(
+        vector->vector, 
+        vector->capacity, 
+        vector->data_type_size
+    );
     if (new_vec == NULL) 
         return NULL;
 
@@ -47,16 +60,20 @@ static Vector* vector_resize(Vector* vector, size_t new_capacity){
     return vector;
 }
 
-int vector_append(Vector** vector, void* data){
+int vector_append(
+    Vector** vector, 
+    void* data
+){
     if (
-        vector == NULL || *vector == NULL ||
-        data == NULL
+        !vector || !(*vector) ||
+        !data
     )
-        return -1;
+        return VEC_INVALID_PARAM;
     
     (*vector)->size += 1;
     if ((*vector)->size >= (*vector)->capacity){ 
-        if(!(*vector = vector_resize(*vector, (*vector)->capacity * 2))) return -1;
+        if(!(*vector = vector_resize(*vector, (*vector)->capacity * 2))) 
+            return VEC_RESIZE_FAILED;
     }
     memcpy(
         (*vector)->vector + (((*vector)->size - 1) * (*vector)->data_type_size), 
@@ -65,9 +82,46 @@ int vector_append(Vector** vector, void* data){
     return 0;
 }
 
-void* vector_get(Vector* vector, size_t index){
+int vector_concat(
+    Vector** dest_vector,
+    const Vector*  src_vector
+){
     if (
-        vector == NULL || 
+        !dest_vector || !(*dest_vector) ||
+        !src_vector
+    ) return VEC_INVALID_PARAM;
+
+    if (
+        (*dest_vector)->data_type_size != 
+        src_vector->data_type_size
+    ) return VEC_TYPE_MISMATCH;
+
+    for(
+        int idx = 0; 
+        idx < src_vector->size ; 
+        idx++
+    ){
+        int err = vector_append(
+            dest_vector,
+            vector_get(
+                src_vector, idx
+            )
+        );
+
+        if (
+            err 
+        ) return err;
+    }
+
+    return 0;
+}
+
+void* vector_get(
+    Vector* vector, 
+    size_t index
+){
+    if (
+        !vector || 
         index >= vector->size
     )
         return NULL;
@@ -77,10 +131,10 @@ void* vector_get(Vector* vector, size_t index){
 
 int vector_remove(Vector** vector, size_t index){
     if (
-        vector == NULL || *vector == NULL || 
+        !vector || !(*vector) || 
         (*vector)->size <= index
     )
-        return -1;
+        return VEC_INVALID_PARAM;
     
     if ( index != ((*vector)->size - 1))
         memmove(
@@ -90,18 +144,26 @@ int vector_remove(Vector** vector, size_t index){
         );
     
     (*vector)->size -= 1;
-    if ((*vector)->size < (*vector)->capacity * 0.25 && (*vector)->capacity > VEC_BASE_SIZE ) {
-        if(!(*vector = vector_resize(*vector, (size_t)(*vector)->capacity / 2))) return -1;
+    if (
+        (*vector)->size < (*vector)->capacity * 0.25 && 
+        (*vector)->capacity > VEC_BASE_SIZE 
+    ) {
+        if(!(*vector = vector_resize(*vector, (size_t)(*vector)->capacity / 2))) 
+            return VEC_RESIZE_FAILED;
     }
     
     return 0;
 }
 
-size_t vector_get_size(Vector* vector){
+size_t vector_get_size(
+    Vector* vector
+){
     return vector->size;
 }
 
-size_t vector_get_data_type_size(Vector* vector){
+size_t vector_get_data_type_size(
+    Vector* vector
+){
     return vector->data_type_size;
 }
 
