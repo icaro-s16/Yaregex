@@ -32,7 +32,8 @@ typedef enum{
     #define X(token_name, token_symbol) token_name, 
         CHAR_TOKENS(X)
         STR_TOKENS(X)
-    #undef X 
+    #undef X ,
+    CONCAT,
     SYMBOL,
     EOT
 }TokenClass;
@@ -40,14 +41,13 @@ typedef enum{
 typedef enum{
     CHAR,
     RANGE,
-    STRING
+    NONE
 }TokenAttr;
 
 typedef struct{
     TokenClass class;
     TokenAttr  attr;
     union{
-        char st[TOKEN_STRING_SIZE];
         struct{
             int start, end;
         };
@@ -57,9 +57,10 @@ typedef struct{
 
 typedef struct{
     size_t  index;
-    size_t tape_size;
+    size_t  tape_size;
     char    *tape; 
     Vector  *tokens; 
+    Token   *last_token;
 }Scanner;
 
 #ifdef YAR_DEBUG
@@ -73,6 +74,12 @@ Vector* yar_scan(const char *pattern);
 static Scanner scanner_construct(const char *pattern);
 
 static int scanner_consume(Scanner *scanner);
+
+static void scanner_append_symbol(Scanner *scanner, Token symbol);
+
+int is_terminal_token(const Token token);
+
+
 
 
 

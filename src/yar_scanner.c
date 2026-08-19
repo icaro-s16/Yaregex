@@ -8,7 +8,7 @@
 
 Token char_tokens_handler(Scanner *scanner);
 
-Token char_range_handler(Scanner *scanner);
+Token ranged_char_handler(Scanner *scanner);
 
 Token quantifier_handler(Scanner *scanner);
 
@@ -41,6 +41,7 @@ const char* yar_token_to_string(
     static char *ANY_WHITESPACE_VAR     = TO_STR(ANY_WHITESPACE);
     static char *ANY_NON_WHITESPACE_VAR = TO_STR(ANY_NON_WHITESPACE);
     static char *EOT_VAR                = TO_STR(EOT);
+    static char *CONCAT_VAR             = TO_STR(CONCAT);
 
     switch(
         token.class
@@ -107,6 +108,8 @@ const char* yar_token_to_string(
         return (const char*)ANY_NON_WHITESPACE_VAR; 
     case EOT:
         return (const char*)EOT_VAR;
+    case CONCAT:
+        return (const char*)CONCAT_VAR;
     default:
         static char SYMBOL_VAR[BUFFER_SIZE];
         sprintf(
@@ -143,6 +146,10 @@ Vector* yar_scan(
         state = scanner_consume(
             &scanner
         );
+        scanner.last_token = vector_get(
+            scanner.tokens,
+            vector_get_size(scanner.tokens) - 1
+        );
     }while(
         state != SCANNER_EMPTY_TAPE
     );
@@ -158,13 +165,14 @@ static Scanner scanner_construct(
 
     size_t pattern_size = strlen(pattern) + 1;
     Scanner scanner = {
-        .index  = 0,
-        .tape_size = pattern_size - 1,
-        .tape   = calloc(
+        .index      = 0,
+        .tape_size  = pattern_size - 1,
+        .tape       = calloc(
             pattern_size, 
             sizeof(char)
         ),
-        .tokens = vector_construct(
+        .last_token = NULL,
+        .tokens     = vector_construct(
             sizeof(Token)
         )
     };
@@ -220,37 +228,134 @@ static int scanner_consume(
     ){
     case '\\':{
         Token token = backslash_handler(scanner);
-        vector_append(
-            &scanner->tokens,
-            &token
-        );
+        if (
+            is_terminal_token(token)
+        )  {
+            scanner_append_symbol(
+                scanner,
+                token
+            );
+        }
+        else{
+            vector_append(
+                &scanner->tokens,
+                &token
+            );
+        }
         break;
     }
     case '[':{
-        Token token = char_range_handler(scanner);
-        vector_append(
-            &scanner->tokens,
-            &token
-        );
+        Token token = ranged_char_handler(scanner);
+        if (
+            is_terminal_token(token)
+        )  {
+            scanner_append_symbol(
+                scanner,
+                token
+            );
+        }
+        else{
+            vector_append(
+                &scanner->tokens,
+                &token
+            );
+        }
         break;
     }
     case '{':{
         Token token = quantifier_handler(scanner);
-        vector_append(
-            &scanner->tokens,
-            &token
-        );
+        if (
+            is_terminal_token(token)
+        )  {
+            scanner_append_symbol(
+                scanner,
+                token
+            );
+        }
+        else{
+            vector_append(
+                &scanner->tokens,
+                &token
+            );
+        }
+        
         break;
     }
     default:{
+        Token concat = {
+            .class = CONCAT,
+            .attr  = NONE,
+        };
+
         Token token = char_tokens_handler(scanner);
-        vector_append(
-            &scanner->tokens,
-            &token
-        );
+        if (
+            is_terminal_token(token)
+        ){
+            scanner_append_symbol(
+                scanner,
+                token
+            );
+        }
+        else{
+            vector_append(
+                &scanner->tokens,
+                &token
+            );
+        }
         break;
     }
     }
     scanner->index += 1;
     return 0;
+}
+
+static void scanner_append_symbol(
+    Scanner *scanner, 
+    Token symbol
+){
+    assert(
+        is_terminal_token(symbol) ||
+        symbol.class == CLOSE_PARENTHESES
+    );
+    
+    Token concat = {
+        .class  = CONCAT,
+        .attr   = NONE
+    };
+    
+    if (
+        scanner->last_token &&
+        ( 
+            is_terminal_token(*scanner->last_token) ||
+            scanner->last_token->class == CLOSE_PARENTHESES
+        ) 
+    ){
+        vector_append(
+            &scanner->tokens,
+            &concat
+        );
+    }
+
+    vector_append(
+        &scanner->tokens,
+        &symbol
+    );
+
+    scanner->last_token = vector_get(
+        scanner->tokens,
+        vector_get_size(scanner->tokens) - 1
+    );
+}
+
+int is_terminal_token(
+    const Token token
+){
+    return (
+        token.class == SYMBOL              ||
+        token.class == ANY_DIGIT           ||
+        token.class == ANY_NON_DIGIT       ||
+        token.class == ANY_WHITESPACE      ||
+        token.class == ANY_NON_WHITESPACE  ||
+        token.class == RANGED_CHAR 
+    ) ? 1 : 0;
 }

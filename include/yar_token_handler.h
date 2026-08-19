@@ -6,9 +6,11 @@ static uint str_to_uint(Scanner* scanner);
 
 static void append_number_symbols(const Scanner *scanner, Vector **symbols);
 
+static void handler_append_symbol(Vector **tokens, Token symbol);
+
 Token char_tokens_handler(Scanner* scanner);
 
-Token char_range_handler(Scanner *scanner);
+Token ranged_char_handler(Scanner *scanner);
 
 Token quantifier_handler(Scanner *scanner);
 
