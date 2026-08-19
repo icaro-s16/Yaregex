@@ -37,11 +37,6 @@ Token char_tokens_handler(
     }
 }
 
-
-#define RETURN_INVALID_TOKEN(x)         \
-    x->state = SCANNER_INVALID_TOKEN;   \
-    return (Token){0}
-
 Token char_range_handler(
     Scanner *scanner
 ){
@@ -50,6 +45,14 @@ Token char_range_handler(
         scanner->tape
     );
 
+    Token symbol = {
+        .class  = SYMBOL,
+        .attr   = CHAR
+    };
+
+    Vector *symbols = vector_construct(
+        sizeof(Token)
+    );
     Token token = {
         .class = RANGED_CHAR,
         .attr  = RANGE
@@ -61,58 +64,131 @@ Token char_range_handler(
     if (
         curr != '['
     ){
-        RETURN_INVALID_TOKEN(scanner);
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        vector_destroy(
+            symbols
+        );
+        return symbol;
     }
 
-    curr = scanner->tape[
-        scanner->index++
-    ];
+    symbol.ch = curr;
+    vector_append(
+        &symbols, 
+        &symbol
+    );
 
-    if (
-        !isalpha(curr)
-    ){
-        RETURN_INVALID_TOKEN(scanner);
-    }
-    token.start = (int)curr;
-    curr = scanner->tape[
-        scanner->index++
-    ];
-    if (
-        curr != '-'
-    ){
-        RETURN_INVALID_TOKEN(scanner);
-    }
-    curr = scanner->tape[
-        scanner->index++
-    ];
-
-    if (
-        !isalpha(curr)
-    ){
-        RETURN_INVALID_TOKEN(scanner);
-    }
-    token.end = (int)curr;
     curr = scanner->tape[
         scanner->index
     ];
 
     if (
-        curr != ']'
+        !isalpha(curr)
     ){
-        RETURN_INVALID_TOKEN(scanner);
+        vector_concat(
+            &scanner->tokens,
+            symbols
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
 
+    symbol.ch = curr;
+    vector_append(
+        &symbols, 
+        &symbol
+    );
+
+    token.start = (int)curr;
+    curr = scanner->tape[
+        ++scanner->index
+    ];
+    if (
+        curr != '-'
+    ){
+        vector_concat(
+            &scanner->tokens,
+            symbols
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
+    }
+
+    symbol.ch = curr;
+    vector_append(
+        &symbols, 
+        &symbol
+    );
+    curr = scanner->tape[
+        ++scanner->index
+    ];
+
+    if (
+        !isalpha(curr)
+    ){
+        vector_concat(
+            &scanner->tokens,
+            symbols
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
+    }
+
+    symbol.ch = curr;
+    vector_append(
+        &symbols, 
+        &curr
+    );
+    token.end = (int)curr;
+    curr = scanner->tape[
+        ++scanner->index
+    ];
+
+    if (
+        curr != ']'
+    ){
+        vector_concat(
+            &scanner->tokens,
+            symbols
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
+    }
+    vector_destroy(
+        symbols
+    );
     return token;
 }
 
 static uint str_to_uint(
     Scanner *scanner
 ){
-    assert(
-        scanner &&
-        scanner->tape
-    );
-
     uint val = 0;
     char curr = scanner->tape[
         scanner->index
@@ -132,6 +208,35 @@ static uint str_to_uint(
     return val;
 }
 
+static void append_number_symbols(
+    const Scanner *scanner,
+    Vector **symbols
+){
+    uint initial_idx = scanner->index;
+
+    for(
+        char curr = scanner->tape[
+            initial_idx
+        ];
+        isdigit(curr) && curr != '\0';
+    ){  
+        Token symbol = {
+            .class  = SYMBOL,
+            .attr   = CHAR, 
+            .ch     = curr
+        };
+
+        vector_append(
+            symbols,
+            &symbol
+        );
+
+        curr = scanner->tape[
+            ++initial_idx
+        ];
+    }
+
+}
 
 Token quantifier_handler(
     Scanner *scanner
@@ -143,53 +248,132 @@ Token quantifier_handler(
     Token token = {
         .attr = RANGE
     };
+
+    Vector *symbols = vector_construct(
+        sizeof(Token)
+    );
+    Token symbol = {
+        .class  = SYMBOL,
+        .attr   = CHAR
+    };
+
     char curr = scanner->tape[
-        scanner->index++
+        scanner->index
     ];
     if (
         curr != '{'
     ) {
-        RETURN_INVALID_TOKEN(scanner);
+        symbol.ch = curr;
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
+    
+    symbol.ch = curr; 
+    vector_append(
+        &symbols, 
+        &symbol
+    );
+
     curr = scanner->tape[
-        scanner->index
+        ++scanner->index
     ];
+
     if (
         !isdigit(curr)
     ){
-        RETURN_INVALID_TOKEN(scanner);
+        vector_concat(
+            &scanner->tokens, 
+            symbols 
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
+    append_number_symbols(
+        scanner,
+        &symbols
+    );
     token.start = str_to_uint(
         scanner
     );
     curr = scanner->tape[
-        scanner->index++
+        scanner->index
     ];
     if (
         curr == '}'
     ){
+        vector_destroy(
+            symbols
+        );
         token.class = QUANTIFIER_EXACT;
         return token;
     }
     if (
         curr != ','
     ){
-        RETURN_INVALID_TOKEN(scanner);
+        vector_concat(
+            &scanner->tokens, 
+            symbols 
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
+    
+    symbol.ch = curr; 
+    vector_append(
+        &symbols, 
+        &symbol
+    );
     curr = scanner->tape[
-        scanner->index
+        ++scanner->index
     ];
     if (
         curr == '}'
-    ){
+    ){  
+        vector_destroy(
+            symbols
+        );
         token.class = QUANTIFIER_MIN;
         return token;
     }
     if (
         !isdigit(curr)
     ){
-        RETURN_INVALID_TOKEN(scanner);
+        vector_concat(
+            &scanner->tokens, 
+            symbols 
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
+    
+    append_number_symbols(
+        scanner,
+        &symbols
+    );
     token.end = str_to_uint(
         scanner
     );
@@ -199,8 +383,22 @@ Token quantifier_handler(
     if (
         curr != '}'
     ){
-        RETURN_INVALID_TOKEN(scanner);
+        vector_concat(
+            &scanner->tokens, 
+            symbols 
+        );
+        vector_destroy(
+            symbols
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
+    vector_destroy(
+        symbols
+    );
 
     token.class = RANGED_QUANTIFIER;
     return token;
@@ -215,17 +413,23 @@ Token backslash_handler(
     );
 
     char curr = scanner->tape[
-        scanner->index++
+        scanner->index
     ];
+
+    Token symbol = {
+        .class  = SYMBOL,
+        .attr   = CHAR
+    };
 
     if (
         curr != '\\'
     ) {
-        RETURN_INVALID_TOKEN(scanner);
+        symbol.ch = curr;
+        return symbol;
     };
 
     curr = scanner->tape[
-        scanner->index
+        ++scanner->index
     ];
 
     Token token = {0};
@@ -260,8 +464,15 @@ Token backslash_handler(
         token.ch    = curr;
         return token;
     default:
-        RETURN_INVALID_TOKEN(scanner);
+        symbol.ch = '\\';
+        vector_append(
+            &scanner->tokens,
+            &symbol
+        );
+        symbol.class = (
+            curr == '\0'
+        ) ? EOT : SYMBOL;
+        symbol.ch = curr;
+        return symbol;
     }
 }
-
-#undef RETURN_INVALID_TOKEN

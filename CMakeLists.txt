@@ -35,7 +35,6 @@ FetchContent_MakeAvailable(cunit)
 set(
     LIB_SRC
     src/yar_scanner.c
-    src/yar_dfa.c
     src/yar_token_handler.c
     src/vector.c
 )

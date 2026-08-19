@@ -138,25 +138,16 @@ Vector* yar_scan(
         pattern
     );
 
+    int state;
     do {
-        scanner_consume(
+        state = scanner_consume(
             &scanner
         );
     }while(
-        scanner.state != SCANNER_EMPTY_TAPE &&
-        scanner.state != SCANNER_INVALID_TOKEN
+        state != SCANNER_EMPTY_TAPE
     );
 
     free(scanner.tape);
-
-    if (
-        scanner.state == SCANNER_INVALID_TOKEN
-    ){
-        vector_destroy(
-            scanner.tokens
-        );
-        return NULL;
-    }
 
     return scanner.tokens;
 }
@@ -167,8 +158,8 @@ static Scanner scanner_construct(
 
     size_t pattern_size = strlen(pattern) + 1;
     Scanner scanner = {
-        .state  = 0,
         .index  = 0,
+        .tape_size = pattern_size - 1,
         .tape   = calloc(
             pattern_size, 
             sizeof(char)
@@ -191,7 +182,7 @@ static Scanner scanner_construct(
     return scanner;
 }
 
-static void scanner_consume(
+static int scanner_consume(
     Scanner *scanner
 ){
     assert(
@@ -199,6 +190,12 @@ static void scanner_consume(
         scanner->tape
     );
     
+    if (
+        scanner->index > scanner->tape_size
+    ){
+        return SCANNER_EMPTY_TAPE;
+    }
+
     char curr = scanner->tape[
         scanner->index
     ];
@@ -215,8 +212,7 @@ static void scanner_consume(
             &scanner->tokens,
             &token
         );
-        scanner->state = SCANNER_EMPTY_TAPE;
-        return;
+        return SCANNER_EMPTY_TAPE;
     }
 
     switch(
@@ -256,4 +252,5 @@ static void scanner_consume(
     }
     }
     scanner->index += 1;
+    return 0;
 }

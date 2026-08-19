@@ -25,8 +25,7 @@
 
 enum{
     TOKEN_STRING_SIZE     = 10,
-    SCANNER_EMPTY_TAPE    = 1,
-    SCANNER_INVALID_TOKEN = 2
+    SCANNER_EMPTY_TAPE    = 1
 };
 
 typedef enum{
@@ -57,8 +56,8 @@ typedef struct{
 }Token;
 
 typedef struct{
-    int     state;
     size_t  index;
+    size_t tape_size;
     char    *tape; 
     Vector  *tokens; 
 }Scanner;
@@ -73,7 +72,7 @@ Vector* yar_scan(const char *pattern);
 
 static Scanner scanner_construct(const char *pattern);
 
-static void scanner_consume(Scanner *scanner);
+static int scanner_consume(Scanner *scanner);
 
 
 

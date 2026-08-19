@@ -1,1 +1,1 @@
-# Yet another regex ( Y.A.R )
+# Yet another regex

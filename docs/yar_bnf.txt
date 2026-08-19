@@ -1,0 +1,21 @@
+<expr> ::= 
+    <expr>'*'       |
+    <expr>'+'       |
+    <expr>'?'       | 
+    <expr>"{%d}"    |
+    <expr>"{%d,}"   |
+    <expr>"{%d,%d}" |
+    <expr>'|'<expr> |
+    <term><expr>    |
+    <term>
+
+<term> ::= 
+    '('<expr>')'    |
+    "Symbol"        |
+    "[%c-%c]"       |
+    "\d"            |
+    "\D"            |
+    "\s"            |
+    "\S" 
+
+
