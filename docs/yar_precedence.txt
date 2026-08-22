@@ -1,0 +1,5 @@
+| 1 | Grouping                          | ()                   |
+| 2 | Single-character-ERE duplication  | * + ? {m,n}{m,}{m}   |
+| 3 | Concatenation                     |                      |
+| 4 | Anchoring                         | ^ $                  |
+| 5 | Alternation                       | |                    |

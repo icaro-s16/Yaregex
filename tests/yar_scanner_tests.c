@@ -2,7 +2,7 @@
 #include "yar_scanner.h"
 
 int main(){ 
-    Vector *tokens = yar_scan("((a[a-b]c)*)b");
+    Vector *tokens = yar_scan("(a*(a[a-b]c)*)b?");
     
     if (
         !tokens
@@ -18,7 +18,11 @@ int main(){
         i < vector_get_size(tokens); 
         i++
     ){
-        printf("%s\n", yar_token_to_string(*(Token*)vector_get(tokens, i)));
+        printf(
+            "%s\n", yar_token_to_string(
+                *(Token*)vector_get(tokens, i)
+            )
+        );
     }
     vector_destroy(tokens);
     return 0;

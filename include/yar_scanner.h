@@ -71,13 +71,15 @@ const char* yar_token_to_string(Token token);
 
 Vector* yar_scan(const char *pattern);
 
+int is_terminal_token(const Token token);
+
+int is_quantifier_token(const Token token);
+
 static Scanner scanner_construct(const char *pattern);
 
 static int scanner_consume(Scanner *scanner);
 
 static void scanner_append_symbol(Scanner *scanner, Token symbol);
-
-int is_terminal_token(const Token token);
 
 
 

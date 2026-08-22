@@ -57,11 +57,6 @@ static void handler_append_symbol(
     Vector **tokens, 
     Token symbol
 ){
-
-    assert(
-        is_terminal_token(symbol)
-    );
-
     Token concat = {
         .class  = CONCAT,
         .attr   = NONE 

@@ -288,20 +288,10 @@ static int scanner_consume(
         };
 
         Token token = char_tokens_handler(scanner);
-        if (
-            is_terminal_token(token)
-        ){
-            scanner_append_symbol(
-                scanner,
-                token
-            );
-        }
-        else{
-            vector_append(
-                &scanner->tokens,
-                &token
-            );
-        }
+        scanner_append_symbol(
+            scanner,
+            token
+        );
         break;
     }
     }
@@ -313,22 +303,23 @@ static void scanner_append_symbol(
     Scanner *scanner, 
     Token symbol
 ){
-    assert(
-        is_terminal_token(symbol) ||
-        symbol.class == CLOSE_PARENTHESES
-    );
     
     Token concat = {
         .class  = CONCAT,
         .attr   = NONE
     };
-    
+
     if (
-        scanner->last_token &&
-        ( 
-            is_terminal_token(*scanner->last_token) ||
-            scanner->last_token->class == CLOSE_PARENTHESES
-        ) 
+        scanner->last_token &&  
+        (
+            scanner->last_token->class != 
+            OPEN_PARENTHESES 
+        ) &&
+        (
+            is_terminal_token(symbol)        ||
+            symbol.class == OPEN_PARENTHESES 
+        )
+        
     ){
         vector_append(
             &scanner->tokens,
@@ -357,5 +348,18 @@ int is_terminal_token(
         token.class == ANY_WHITESPACE      ||
         token.class == ANY_NON_WHITESPACE  ||
         token.class == RANGED_CHAR 
+    ) ? 1 : 0;
+}
+
+int is_quantifier_token(
+    const Token token
+){
+    return (
+        token.class == STAR              ||
+        token.class == PLUS              ||
+        token.class == QMARK             ||
+        token.class == QUANTIFIER_EXACT  ||
+        token.class == QUANTIFIER_MIN    ||
+        token.class == RANGED_CHAR       
     ) ? 1 : 0;
 }

@@ -1,16 +1,28 @@
-<expr> ::= 
-    <expr>'*'       |
-    <expr>'+'       |
-    <expr>'?'       | 
-    <expr>"{%d}"    |
-    <expr>"{%d,}"   |
-    <expr>"{%d,%d}" |
-    <expr>'|'<expr> |
-    <term><expr>    |
-    <term>
+<expr> ::=
+    <alternation-expr>
 
-<term> ::= 
+<alternation-expr> ::=
+    <concatenation-expr>                        |
+    <alternation-expr>'|'<concatenation-expr>   |
+
+<concatenation-expr> ::=
+    <quantifier-expr>                        |
+    <concatenation-expr><quantifier-expr>    |
+
+<quantifier-expr> ::= 
+    <grouping-expr>          |
+    <grouping-expr>'*'       |
+    <grouping-expr>'+'       |
+    <grouping-expr>'?'       | 
+    <grouping-expr>"{%d}"    |
+    <grouping-expr>"{%d,}"   |
+    <grouping-expr>"{%d,%d}" |
+
+<grouping-expr> ::=
+    <terminal>      |
     '('<expr>')'    |
+
+<terminal> ::= 
     "Symbol"        |
     "[%c-%c]"       |
     "\d"            |
