@@ -3,6 +3,11 @@
 
 #ifdef YAR_DEBUG
 
+/*
+ * NOTE: Print the AST level by level. 
+ * Each node is printed with its number 
+ * of children.
+ */
 void parser_print_ast(
     ASTNode *root
 ){
@@ -525,9 +530,9 @@ static ASTNode* terminal(
     ));
 
     /* 
-     * NOTE: If a CLOSE_PARENTHESES reach this function
-     * probably the grouping function didnt encounter 
-     * the OPEN_PARENTHESES correspondent.
+     * NOTE: If a CLOSE_PARENTHESES reaches this function, 
+     * it likely means the grouping function did not find 
+     * the corresponding OPEN_PARENTHESES.
      */
     if (
         curr.class == CLOSE_PARENTHESES

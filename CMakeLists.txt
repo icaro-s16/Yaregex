@@ -1,6 +1,3 @@
-# This CMake file is responsible to 
-# build the unit tests, you can 
-
 cmake_minimum_required(
     VERSION 4.3.0
 )
@@ -65,7 +62,7 @@ set(
 
 add_executable(
     ${MAIN} 
-    tests/yar_scanner_tests.c
+    tests/yar_parser_tests.c
 )
 
 target_compile_options(
