@@ -1,8 +1,5 @@
 #include "vector.h"
 
-
-// Private declarations
-
 enum{
     VEC_BASE_SIZE = 16
 };
@@ -38,26 +35,6 @@ int vector_destroy(
     if (vector->vector != NULL ) free(vector->vector);
     free(vector);
     return 0;
-}
-
-static Vector* vector_resize(
-    Vector* vector, 
-    size_t new_capacity
-){
-    assert(vector);
-    assert(new_capacity > 0);
-    
-    vector->capacity = new_capacity;
-    void *new_vec = (void*)reallocarray(
-        vector->vector, 
-        vector->capacity, 
-        vector->data_type_size
-    );
-    if (new_vec == NULL) 
-        return NULL;
-
-    vector->vector = new_vec;
-    return vector;
 }
 
 int vector_append(
@@ -167,3 +144,22 @@ size_t vector_get_data_type_size(
     return vector->data_type_size;
 }
 
+static Vector* vector_resize(
+    Vector* vector, 
+    size_t new_capacity
+){
+    assert(vector);
+    assert(new_capacity > 0);
+    
+    vector->capacity = new_capacity;
+    void *new_vec = (void*)reallocarray(
+        vector->vector, 
+        vector->capacity, 
+        vector->data_type_size
+    );
+    if (new_vec == NULL) 
+        return NULL;
+
+    vector->vector = new_vec;
+    return vector;
+}

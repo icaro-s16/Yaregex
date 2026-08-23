@@ -113,7 +113,7 @@ Token char_tokens_handler(
 }
 
 #define RETURN_INVALID_OP_TOKEN(scanner, symbols, symbol)   \
-    vector_concat(                                          \
+        vector_concat(                                      \
             &scanner->tokens,                               \
             symbols                                         \
         );                                                  \

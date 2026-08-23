@@ -2,7 +2,7 @@
 #include "yar_scanner.h"
 
 int main(){ 
-    Vector *tokens = yar_scan("(a*(a[a-b]c)*)b?");
+    Vector *tokens = yar_scan("(ab)|(cd)");
     
     if (
         !tokens

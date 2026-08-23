@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "yar_scanner.h"
 
-/* NOTE: Foward declaration from "yar_token_handler.h" */
+/* NOTE: Private foward declaration from "yar_token_handler.h" */
 
 Token char_tokens_handler(Scanner *scanner);
 
@@ -16,7 +16,8 @@ Token backslash_handler(Scanner *scanner);
 
 #ifdef YAR_DEBUG
 
-/* NOTE: This function is unsafe and can cause
+/* 
+ * NOTE: This function is unsafe and can cause
  * overflow, so it should be used just in debug 
  * cases.
  */
@@ -309,17 +310,41 @@ static void scanner_append_symbol(
         .attr   = NONE
     };
 
+    /* 
+     * NOTE: Maybe I should try to find 
+     * another way to deal with implicit 
+     * concatenation. This if statement 
+     * is ugly, but it handles all possible 
+     * concatenations.
+     * 
+     * Concatenation cases:
+     * 
+     * 1. symbol concat symbol
+     * 2. quantifier concat symbol
+     * 3. grouping concat symbol
+     * 4. grouping concat grouping
+     * 
+     */
     if (
-        scanner->last_token &&  
+        scanner->last_token && 
         (
-            scanner->last_token->class != 
-            OPEN_PARENTHESES 
-        ) &&
-        (
-            is_terminal_token(symbol)        ||
-            symbol.class == OPEN_PARENTHESES 
+            (
+                is_terminal_token(*scanner->last_token) &&
+                is_terminal_token(symbol)
+            ) ||
+            (
+                scanner->last_token->class == CLOSE_PARENTHESES &&
+                is_terminal_token(symbol)
+            ) ||
+            (
+                is_quantifier_token(*scanner->last_token) &&
+                is_terminal_token(symbol)
+            ) ||
+            (
+                scanner->last_token->class == CLOSE_PARENTHESES &&
+                symbol.class == OPEN_PARENTHESES
+            )
         )
-        
     ){
         vector_append(
             &scanner->tokens,

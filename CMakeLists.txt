@@ -65,7 +65,7 @@ set(
 
 add_executable(
     ${MAIN} 
-    tests/yar_parser_tests.c
+    tests/yar_scanner_tests.c
 )
 
 target_compile_options(

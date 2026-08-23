@@ -82,16 +82,20 @@ void parser_print_ast(
         }
         
     }
-    
-
     vector_destroy(
         queue
     );
-
 }
 
 #endif 
 
+/*
+ * NOTE: When an AST is created, multiple syntax errors 
+ * can occur. These are combined as bit flags within 
+ * the err variable. To check which specific error 
+ * occurred, use a bitwise AND operation (e.g., err & ERROR). 
+ * If the result is non-zero, that specific ERROR occurred.
+ */
 ASTNode* parser_create_ast(
     Vector *tokens,
     uint *err
@@ -366,6 +370,11 @@ static ASTNode* quantifier_expr(
     return left;
 }
 
+/* 
+ * TODO: This function is too expensive. 
+ * There might be another way to implement 
+ * it without using so many allocations.
+ */
 static ASTNode* grouping_expr(
     Parser *parser
 ){   
@@ -466,9 +475,10 @@ static ASTNode* grouping_expr(
         
         parser->state |= INVALID_GROUPING;
 
-        /* NOTE: In the interation, if reach EOT, the index will pass the  
-         * size of the vector, so to continue inside of it, we substract it 
-         * by one.
+        /* 
+         * NOTE: During the iteration, if EOT is reached, 
+         * the index will exceed the vector's size. To 
+         * keep it within bounds, we decrement it by one.
          */
         parser->index -= 1;                 
         return NULL;
@@ -513,7 +523,12 @@ static ASTNode* terminal(
         parser->tokens,
         parser->index
     ));
-    
+
+    /* 
+     * NOTE: If a CLOSE_PARENTHESES reach this function
+     * probably the grouping function didnt encounter 
+     * the OPEN_PARENTHESES correspondent.
+     */
     if (
         curr.class == CLOSE_PARENTHESES
     ){
