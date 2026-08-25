@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include "yar_scanner.h"
 
-int main(){ 
-    Vector *tokens = yar_scan("(ab)|(cd)");
+void scanner_test(
+    char *pattern
+){ 
+    Vector *tokens = yar_scan(pattern);
     
     if (
         !tokens
@@ -25,6 +27,5 @@ int main(){
         );
     }
     vector_destroy(tokens);
-    return 0;
 }
 

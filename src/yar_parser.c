@@ -160,6 +160,35 @@ void parser_destroy_ast(
     );
 }
 
+static ASTNode* clone_ast(
+    ASTNode* root
+){
+    if (
+        !root
+    ) return NULL;
+    
+    ASTNode* copy = calloc(
+        1,
+        sizeof(ASTNode)
+    );
+
+    copy->op = root->op;
+
+    if (
+        root->left
+    ) copy->left = clone_ast(
+        root->left
+    );
+
+    if (
+        root->right 
+    ) copy->right = clone_ast(
+        root->right
+    );
+
+    return copy;    
+}
+
 static Parser parser_construct(
     Vector *tokens
 ){
@@ -326,6 +355,137 @@ static ASTNode* concatenation_expr(
     return left;
 }
 
+static ASTNode* translate_quantifier_exact(
+    ASTNode *left,
+    Token curr
+){
+    Token concat = {
+        .class  = CONCAT,
+        .attr   = NONE
+    };
+    
+    if (
+        curr.start <= 1
+    )return left;
+    
+    ASTNode *new_left = clone_ast(
+        left
+    );
+
+    for(
+        int idx = 0;
+        idx < curr.start - 1;
+        idx ++
+    ){
+        ASTNode *right = clone_ast(
+            new_left
+        );
+
+        left = ast_node_construct(
+            concat,
+            left,
+            right
+        );
+
+    }
+    parser_destroy_ast(
+        new_left
+    );
+
+    return left;
+}
+
+static ASTNode* translate_quantifier_min(
+    ASTNode *left,
+    Token curr
+){
+    left = translate_quantifier_exact(
+        left,
+        curr
+    );
+
+    Token star = {
+        .class  = STAR,
+        .attr   = NONE
+    };
+
+    left = ast_node_construct(
+        star,
+        left,
+        NULL
+    );
+
+    return left;
+}
+
+static ASTNode* trasnlate_ranged_quantifier(
+    ASTNode *left,
+    Token curr
+){
+    ASTNode *new_left = clone_ast(
+        left
+    );
+    
+    Token concat = {
+        .class  = CONCAT,
+        .attr   = NONE
+    };
+
+    Token qmark = {
+        .class  = QMARK,
+        .attr   = NONE
+    };
+
+    if (
+        curr.start > 1
+    ) {
+        for(
+            int idx = 0;
+            idx < curr.start - 1;
+            idx ++
+        ){
+            ASTNode *right = clone_ast(
+                new_left
+            );
+
+            left = ast_node_construct(
+                concat,
+                left,
+                right
+            );
+
+        }
+    }      
+
+    for (
+        int idx = curr.start;
+        idx < curr.end;
+        idx++
+    ){
+        ASTNode *right = clone_ast(
+            new_left
+        );
+
+        right = ast_node_construct(
+            qmark,
+            right,
+            NULL
+        );
+
+        left = ast_node_construct(
+            concat,
+            left,
+            right
+        );
+    }
+
+    parser_destroy_ast(
+        new_left
+    );
+
+    return left;
+}
+
 static ASTNode* quantifier_expr(
     Parser *parser
 ){
@@ -360,11 +520,40 @@ static ASTNode* quantifier_expr(
     ) {
         parser->index += 1;
 
-        left = ast_node_construct(
-            curr,
-            left,
-            right
-        );
+        /*
+         * NOTE: This approach allows us to build a default 
+         * FSM using only the {*, +, ?, |, .} operators. It 
+         * is easier to construct and avoids the need to 
+         * deep-copy a cyclic graph.
+         */
+        switch (curr.class)
+        {
+        case QUANTIFIER_EXACT:
+            left = translate_quantifier_exact(
+                left,
+                curr
+            );
+            break;
+        case QUANTIFIER_MIN:
+            left = translate_quantifier_min(
+                left,
+                curr
+            );
+            break;
+        case RANGED_QUANTIFIER:
+            left = trasnlate_ranged_quantifier(
+                left,
+                curr
+            );
+            break;
+        default:
+            left = ast_node_construct(
+                curr,
+                left,
+                NULL
+            );
+            break;
+        }
 
         curr = *((Token*)vector_get(
             parser->tokens,

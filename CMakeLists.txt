@@ -33,6 +33,7 @@ set(
     LIB_SRC
     src/yar_scanner.c
     src/yar_parser.c
+    src/yar_nfa.c
     src/yar_token_handler.c
     src/vector.c
 )
@@ -62,7 +63,7 @@ set(
 
 add_executable(
     ${MAIN} 
-    tests/yar_parser_tests.c
+    tests/yar_tests.c
 )
 
 target_compile_options(

@@ -228,7 +228,9 @@ static int scanner_consume(
         curr 
     ){
     case '\\':{
-        Token token = backslash_handler(scanner);
+        Token token = backslash_handler(
+            scanner
+        );
         if (
             is_terminal_token(token)
         )  {
@@ -246,7 +248,9 @@ static int scanner_consume(
         break;
     }
     case '[':{
-        Token token = ranged_char_handler(scanner);
+        Token token = ranged_char_handler(
+            scanner
+        );
         if (
             is_terminal_token(token)
         )  {
@@ -264,7 +268,9 @@ static int scanner_consume(
         break;
     }
     case '{':{
-        Token token = quantifier_handler(scanner);
+        Token token = quantifier_handler(
+            scanner
+        );
         if (
             is_terminal_token(token)
         )  {
@@ -288,7 +294,9 @@ static int scanner_consume(
             .attr  = NONE,
         };
 
-        Token token = char_tokens_handler(scanner);
+        Token token = char_tokens_handler(
+            scanner
+        );
         scanner_append_symbol(
             scanner,
             token
@@ -323,7 +331,7 @@ static void scanner_append_symbol(
      * 2. quantifier concat symbol
      * 3. grouping concat symbol
      * 4. grouping concat grouping
-     * 
+     * 5. symbol concat grouping
      */
     if (
         scanner->last_token && 
@@ -342,6 +350,10 @@ static void scanner_append_symbol(
             ) ||
             (
                 scanner->last_token->class == CLOSE_PARENTHESES &&
+                symbol.class == OPEN_PARENTHESES
+            ) ||
+            (
+                is_terminal_token(*scanner->last_token) &&
                 symbol.class == OPEN_PARENTHESES
             )
         )
@@ -385,6 +397,6 @@ int is_quantifier_token(
         token.class == QMARK             ||
         token.class == QUANTIFIER_EXACT  ||
         token.class == QUANTIFIER_MIN    ||
-        token.class == RANGED_CHAR       
+        token.class == RANGED_QUANTIFIER      
     ) ? 1 : 0;
 }

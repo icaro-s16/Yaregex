@@ -30,6 +30,8 @@ ASTNode* parser_create_ast(Vector *tokens, uint *err);
 
 void parser_destroy_ast(ASTNode *root);
 
+static ASTNode* clone_ast(ASTNode* root);
+
 static Parser parser_construct(Vector *tokens);
 
 static void parser_destroy(Parser *parser); 
@@ -41,6 +43,12 @@ static ASTNode* ast_node_construct_leaf(Token op);
 static ASTNode* alternation_expr(Parser *parser);
 
 static ASTNode* concatenation_expr(Parser *parser);
+
+static ASTNode* translate_quantifier_exact(ASTNode *left, Token curr);
+
+static ASTNode* translate_quantifier_min(ASTNode *left, Token curr);
+
+static ASTNode* trasnlate_ranged_quantifier(ASTNode *left, Token curr);
 
 static ASTNode* quantifier_expr(Parser *parser);
 

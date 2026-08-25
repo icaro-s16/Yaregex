@@ -112,29 +112,46 @@ Token char_tokens_handler(
     }
 }
 
-#define RETURN_INVALID_OP_TOKEN(scanner, symbols, symbol)   \
-        vector_concat(                                      \
-            &scanner->tokens,                               \
-            symbols                                         \
-        );                                                  \
-        if (                                                \
-            vector_get_size(scanner->tokens) > 0            \
-        ){                                                  \
-            scanner->last_token = vector_get(               \
-                scanner->tokens,                            \
-                vector_get_size(scanner->tokens) - 1        \
-            );                                              \
-        }                                                   \
-        vector_destroy(                                     \
-            symbols                                         \
-        );                                                  \
-        symbol.ch = curr;                                   \
-        if (                                                \
-            curr == '\0'                                    \
-        ) {                                                 \
-            symbol.class = EOT;                             \
-            symbol.attr  = NONE;                            \
-        }                                                   \
+#define RETURN_INVALID_OP_TOKEN(scanner, symbols, symbol)           \
+        Token concat = {                                            \
+            .class  = CONCAT,                                       \
+            .attr   = NONE                                          \
+        };                                                          \
+        if (                                                        \
+            scanner->last_token &&                                  \
+            (                                                       \
+                is_terminal_token(*scanner->last_token)         ||  \
+                scanner->last_token->class == CLOSE_PARENTHESES ||  \
+                is_quantifier_token(*scanner->last_token)           \
+            )                                                       \
+        ){                                                          \
+            vector_append(                                          \
+                &scanner->tokens,                                   \
+                &concat                                             \
+            );                                                      \
+        }                                                           \
+        vector_concat(                                              \
+            &scanner->tokens,                                       \
+            symbols                                                 \
+        );                                                          \
+        if (                                                        \
+            vector_get_size(scanner->tokens) > 0                    \
+        ){                                                          \
+            scanner->last_token = vector_get(                       \
+                scanner->tokens,                                    \
+                vector_get_size(scanner->tokens) - 1                \
+            );                                                      \
+        }                                                           \
+        vector_destroy(                                             \
+            symbols                                                 \
+        );                                                          \
+        symbol.ch = curr;                                           \
+        if (                                                        \
+            curr == '\0'                                            \
+        ) {                                                         \
+            symbol.class = EOT;                                     \
+            symbol.attr  = NONE;                                    \
+        }                                                           \
         return symbol
 
 Token ranged_char_handler(
@@ -303,7 +320,7 @@ Token quantifier_handler(
     
     symbol.ch = curr; 
     handler_append_symbol(
-        &scanner->tokens,
+        &symbols,
         symbol
     );
 
@@ -351,7 +368,7 @@ Token quantifier_handler(
     
     symbol.ch = curr; 
     handler_append_symbol(
-        &scanner->tokens,
+        &symbols,
         symbol
     );
     curr = scanner->tape[
@@ -458,12 +475,26 @@ Token backslash_handler(
     case '}':
         token.ch    = curr;
         return token;
-    default:
+    default:{
+        Token concat = {
+            .class  = CONCAT,
+            .attr   = NONE
+        };
+        if (
+            scanner->last_token &&
+            is_terminal_token(*scanner->last_token)
+        ){
+            vector_append(
+                &scanner->tokens,
+                &concat
+            );
+        }
+
         symbol.ch = '\\';
         vector_append(
             &scanner->tokens,
             &symbol
-        );       
+        );    
         symbol.ch = curr;
         if (
             curr == '\0'
@@ -472,5 +503,6 @@ Token backslash_handler(
             token.class = EOT;
         }
         return symbol;
+    }
     }
 }

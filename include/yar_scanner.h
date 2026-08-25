@@ -80,9 +80,3 @@ static Scanner scanner_construct(const char *pattern);
 static int scanner_consume(Scanner *scanner);
 
 static void scanner_append_symbol(Scanner *scanner, Token symbol);
-
-
-
-
-
-
