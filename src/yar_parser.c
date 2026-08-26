@@ -8,15 +8,15 @@
  * Each node is printed with its number 
  * of children.
  */
-void parser_print_ast(
-    ASTNode *root
+void yar_print_ast(
+    AstNode *root
 ){
     assert(
         root
     );
 
     Vector *queue = vector_construct(
-        sizeof(ASTNode)
+        sizeof(AstNode)
     );
 
     vector_append(
@@ -31,7 +31,7 @@ void parser_print_ast(
             queue
         ) > 0 
     ){
-        ASTNode curr = *((ASTNode*)vector_get(
+        AstNode curr = *((AstNode*)vector_get(
             queue, 
             0
         ));
@@ -95,21 +95,28 @@ void parser_print_ast(
 #endif 
 
 /*
- * NOTE: When an AST is created, multiple syntax errors 
+ * NOTE 1: When an AST is created, multiple syntax errors 
  * can occur. These are combined as bit flags within 
  * the err variable. To check which specific error 
  * occurred, use a bitwise AND operation (e.g., err & ERROR). 
  * If the result is non-zero, that specific ERROR occurred.
+ * 
  */
-ASTNode* parser_create_ast(
-    Vector *tokens,
+AstNode* yar_ast_construct(
+    const char *pattern,
     uint *err
 ){
+    
+    Vector *tokens = yar_scan(
+        pattern,
+        err
+    );
+
     Parser parser = parser_construct(
         tokens
     );
 
-    ASTNode *root = alternation_expr(
+    AstNode *root = alternation_expr(
         &parser
     );
 
@@ -119,7 +126,7 @@ ASTNode* parser_create_ast(
         if (
             root
         ){
-            parser_destroy_ast(
+            yar_ast_destroy(
                 root
             );
         }
@@ -134,8 +141,8 @@ ASTNode* parser_create_ast(
     return root;
 }
 
-void parser_destroy_ast(
-    ASTNode *root
+void yar_ast_destroy(
+    AstNode *root
 ){
     assert(
         root
@@ -144,14 +151,14 @@ void parser_destroy_ast(
     if (
         root->left
     ){
-        parser_destroy_ast(
+        yar_ast_destroy(
             root->left
         );
     }
     if (
         root->right
     ){
-        parser_destroy_ast(
+        yar_ast_destroy(
             root->right
         );
     }
@@ -160,16 +167,16 @@ void parser_destroy_ast(
     );
 }
 
-static ASTNode* clone_ast(
-    ASTNode* root
+static AstNode* clone_ast(
+    AstNode* root
 ){
     if (
         !root
     ) return NULL;
     
-    ASTNode* copy = calloc(
+    AstNode* copy = calloc(
         1,
-        sizeof(ASTNode)
+        sizeof(AstNode)
     );
 
     copy->op = root->op;
@@ -219,14 +226,14 @@ static void parser_destroy(
     );
 }
 
-static ASTNode* ast_node_construct(
+static AstNode* ast_node_construct(
     Token op,
-    ASTNode *left,
-    ASTNode *right
+    AstNode *left,
+    AstNode *right
 ){
-    ASTNode *node = calloc(
+    AstNode *node = calloc(
         1, 
-        sizeof(ASTNode)
+        sizeof(AstNode)
     );
 
     assert(
@@ -240,7 +247,7 @@ static ASTNode* ast_node_construct(
     return node;
 }
 
-static ASTNode* ast_node_construct_leaf(
+static AstNode* ast_node_construct_leaf(
     Token op
 ){
     assert(
@@ -256,7 +263,7 @@ static ASTNode* ast_node_construct_leaf(
     );
 }
 
-static ASTNode* alternation_expr(
+static AstNode* alternation_expr(
     Parser *parser
 ){
     assert(
@@ -264,7 +271,7 @@ static ASTNode* alternation_expr(
         parser->tokens
     );
     
-    ASTNode *left = NULL, *right = NULL;
+    AstNode *left = NULL, *right = NULL;
     Token curr;
 
     left = concatenation_expr(
@@ -293,7 +300,7 @@ static ASTNode* alternation_expr(
         if (
             !left ||
             !right 
-        ) parser->state = INVALID_ALTERNATION;
+        ) parser->state = PARSER_INVALID_ALTERNATION;
         
         left = ast_node_construct(
             curr,
@@ -311,11 +318,11 @@ static ASTNode* alternation_expr(
     return left;
 }
 
-static ASTNode* concatenation_expr(
+static AstNode* concatenation_expr(
     Parser *parser
 ){
 
-    ASTNode *left = NULL, *right = NULL;
+    AstNode *left = NULL, *right = NULL;
     Token curr;
 
     left = quantifier_expr(
@@ -355,8 +362,8 @@ static ASTNode* concatenation_expr(
     return left;
 }
 
-static ASTNode* translate_quantifier_exact(
-    ASTNode *left,
+static AstNode* translate_quantifier_exact(
+    AstNode *left,
     Token curr
 ){
     Token concat = {
@@ -368,7 +375,7 @@ static ASTNode* translate_quantifier_exact(
         curr.start <= 1
     )return left;
     
-    ASTNode *new_left = clone_ast(
+    AstNode *new_left = clone_ast(
         left
     );
 
@@ -377,7 +384,7 @@ static ASTNode* translate_quantifier_exact(
         idx < curr.start - 1;
         idx ++
     ){
-        ASTNode *right = clone_ast(
+        AstNode *right = clone_ast(
             new_left
         );
 
@@ -388,15 +395,15 @@ static ASTNode* translate_quantifier_exact(
         );
 
     }
-    parser_destroy_ast(
+    yar_ast_destroy(
         new_left
     );
 
     return left;
 }
 
-static ASTNode* translate_quantifier_min(
-    ASTNode *left,
+static AstNode* translate_quantifier_min(
+    AstNode *left,
     Token curr
 ){
     left = translate_quantifier_exact(
@@ -418,11 +425,11 @@ static ASTNode* translate_quantifier_min(
     return left;
 }
 
-static ASTNode* trasnlate_ranged_quantifier(
-    ASTNode *left,
+static AstNode* trasnlate_ranged_quantifier(
+    AstNode *left,
     Token curr
 ){
-    ASTNode *new_left = clone_ast(
+    AstNode *new_left = clone_ast(
         left
     );
     
@@ -444,7 +451,7 @@ static ASTNode* trasnlate_ranged_quantifier(
             idx < curr.start - 1;
             idx ++
         ){
-            ASTNode *right = clone_ast(
+            AstNode *right = clone_ast(
                 new_left
             );
 
@@ -462,7 +469,7 @@ static ASTNode* trasnlate_ranged_quantifier(
         idx < curr.end;
         idx++
     ){
-        ASTNode *right = clone_ast(
+        AstNode *right = clone_ast(
             new_left
         );
 
@@ -479,18 +486,18 @@ static ASTNode* trasnlate_ranged_quantifier(
         );
     }
 
-    parser_destroy_ast(
+    yar_ast_destroy(
         new_left
     );
 
     return left;
 }
 
-static ASTNode* quantifier_expr(
+static AstNode* quantifier_expr(
     Parser *parser
 ){
 
-    ASTNode *left = NULL, *right = NULL;
+    AstNode *left = NULL, *right = NULL;
     Token curr;
 
     left = grouping_expr(
@@ -509,7 +516,7 @@ static ASTNode* quantifier_expr(
     if (
         !left
     ){
-        parser->state |= INVALID_QUANTIFIER;
+        parser->state |= PARSER_INVALID_QUANTIFIER;
         return NULL;
     }
 
@@ -569,10 +576,10 @@ static ASTNode* quantifier_expr(
  * There might be another way to implement 
  * it without using so many allocations.
  */
-static ASTNode* grouping_expr(
+static AstNode* grouping_expr(
     Parser *parser
 ){   
-    ASTNode *left = NULL, *right = NULL;
+    AstNode *left = NULL, *right = NULL;
     Token curr;
 
     left = terminal(
@@ -667,7 +674,7 @@ static ASTNode* grouping_expr(
             grouping_tokens
         );
         
-        parser->state |= INVALID_GROUPING;
+        parser->state |= PARSER_INVALID_GROUPING;
 
         /* 
          * NOTE: During the iteration, if EOT is reached, 
@@ -706,7 +713,7 @@ static ASTNode* grouping_expr(
     return left;
 }
 
-static ASTNode* terminal(
+static AstNode* terminal(
     Parser *parser
 ){
     assert(
@@ -726,7 +733,7 @@ static ASTNode* terminal(
     if (
         curr.class == CLOSE_PARENTHESES
     ){
-        parser->state |= INVALID_GROUPING;
+        parser->state |= PARSER_INVALID_GROUPING;
     }
 
     if (
@@ -735,7 +742,7 @@ static ASTNode* terminal(
         )
     ) return NULL;
 
-    ASTNode *node;
+    AstNode *node;
 
     node = ast_node_construct_leaf(
         curr

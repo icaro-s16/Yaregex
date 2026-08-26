@@ -4,7 +4,8 @@
 void scanner_test(
     char *pattern
 ){ 
-    Vector *tokens = yar_scan(pattern);
+    uint err = 0;
+    Vector *tokens = yar_scan(pattern, &err);
     
     if (
         !tokens

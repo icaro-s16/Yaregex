@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "vector.h"
+#include "yar_err_flags.h"
 
 #define CHAR_TOKENS(X)          \
     X(OPEN_PARENTHESES, '(')    \
@@ -24,15 +25,15 @@
     X(QUANTIFIER_MIN, "{%d,}")      
 
 enum{
-    TOKEN_STRING_SIZE     = 10,
-    SCANNER_EMPTY_TAPE    = 1
+    TOKEN_STRING_SIZE           = 10,
+    SCANNER_EMPTY_TAPE          = 1
 };
 
 typedef enum{
     #define X(token_name, token_symbol) token_name, 
         CHAR_TOKENS(X)
         STR_TOKENS(X)
-    #undef X ,
+    #undef X
     CONCAT,
     SYMBOL,
     EOT
@@ -61,6 +62,7 @@ typedef struct{
     char    *tape; 
     Vector  *tokens; 
     Token   *last_token;
+    uint    state;
 }Scanner;
 
 #ifdef YAR_DEBUG
@@ -69,7 +71,7 @@ const char* yar_token_to_string(Token token);
 
 #endif
 
-Vector* yar_scan(const char *pattern);
+Vector* yar_scan(const char *pattern, uint *err);
 
 int is_terminal_token(const Token token);
 

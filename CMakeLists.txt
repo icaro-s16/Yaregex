@@ -36,6 +36,7 @@ set(
     src/yar_nfa.c
     src/yar_token_handler.c
     src/vector.c
+    src/yaregex.c
 )
 
 add_library(

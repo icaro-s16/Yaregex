@@ -5,10 +5,10 @@ enum{
 };
 
 struct Vector{
-    size_t capacity;
-    size_t size;
-    size_t data_type_size;
-    void* vector;
+    size_t  capacity;
+    size_t  size;
+    size_t  data_type_size;
+    void    *vector;
 };
 
 Vector* vector_construct(
@@ -28,7 +28,7 @@ Vector* vector_construct(
 }
 
 int vector_destroy(
-    Vector* vector
+    Vector  *vector
 ){
     if (!vector)
         return VEC_INVALID_PARAM;
@@ -37,9 +37,44 @@ int vector_destroy(
     return 0;
 }
 
+int vector_find(
+    Vector    *vector, 
+    void      *data,
+    size_t    data_size
+){
+    if (
+        !vector ||
+        !data ||
+        !vector->vector
+    ) return VEC_INVALID_PARAM;
+
+    if (
+        data_size != vector->data_type_size
+    ) return VEC_INVALID_PARAM;
+
+    for(
+        int idx = 0;
+        idx < vector->size;
+        idx ++
+    ){
+        if (
+            !memcmp(
+                vector_get(
+                    vector,
+                    idx
+                ),
+                data,
+                data_size
+            )
+        ) return idx;
+    }
+
+    return -1;
+}
+
 int vector_append(
-    Vector** vector, 
-    void* data
+    Vector  **vector, 
+    void    *data
 ){
     if (
         !vector || !(*vector) ||
@@ -60,8 +95,8 @@ int vector_append(
 }
 
 int vector_concat(
-    Vector** dest_vector,
-    const Vector*  src_vector
+    Vector  **dest_vector,
+    Vector  *src_vector
 ){
     if (
         !dest_vector || !(*dest_vector) ||
@@ -94,8 +129,8 @@ int vector_concat(
 }
 
 void* vector_get(
-    Vector* vector, 
-    size_t index
+    Vector  *vector, 
+    size_t  index
 ){
     if (
         !vector || 
@@ -106,7 +141,10 @@ void* vector_get(
     return (vector->vector + (index * vector->data_type_size));
 }
 
-int vector_remove(Vector** vector, size_t index){
+int vector_remove(
+    Vector  **vector, 
+    size_t  index
+){
     if (
         !vector || !(*vector) || 
         (*vector)->size <= index
@@ -133,20 +171,20 @@ int vector_remove(Vector** vector, size_t index){
 }
 
 size_t vector_get_size(
-    Vector* vector
+    Vector *vector
 ){
     return vector->size;
 }
 
 size_t vector_get_data_type_size(
-    Vector* vector
+    Vector *vector
 ){
     return vector->data_type_size;
 }
 
 static Vector* vector_resize(
-    Vector* vector, 
-    size_t new_capacity
+    Vector  *vector, 
+    size_t  new_capacity
 ){
     assert(vector);
     assert(new_capacity > 0);

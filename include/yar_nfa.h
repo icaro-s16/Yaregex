@@ -14,20 +14,29 @@ typedef struct{
 }Transition;
 
 typedef struct{
-    State *initial_state;
-    State *final_state;
+    State   *initial_state;
+    State   *final_state;
+}FsmFragment;
+
+typedef struct{
+    FsmFragment *fsm_fragment;
+    Vector      *states;
 }FSM;
 
-FSM* yar_create_automaton(ASTNode *root);
+FSM yar_nfa_construct(const char *pattern, uint *err);
 
-static FSM* terminal_fsm(Token symbol);
+void yar_nfa_destroy(FSM *fsm);
 
-static FSM* concat_fsm(FSM *left, FSM *right);
+static FsmFragment* fsm_fragment_construct(AstNode *root, Vector *states);
 
-static FSM* pipe_fsm(FSM *left, FSM *right);
+static FsmFragment* terminal_fsm_fragment(Token symbol, Vector *states);
 
-static FSM* qmark_fsm(FSM *left, FSM *right);
+static FsmFragment* concat_fsm_fragment(FsmFragment *left, FsmFragment *right, Vector *states);
 
-static FSM* star_fsm(FSM *left, FSM *rihgt);
+static FsmFragment* pipe_fsm_fragment(FsmFragment *left, FsmFragment *right, Vector *states);
 
-static FSM* plus_fsm(FSM *left, FSM *right);
+static FsmFragment* qmark_fsm_fragment(FsmFragment *left, Vector *states);
+
+static FsmFragment* star_fsm_fragment(FsmFragment *left, Vector *states);
+
+static FsmFragment* plus_fsm_fragment(FsmFragment *left, Vector *states);

@@ -44,21 +44,25 @@ const char* yar_token_to_string(
     static char *EOT_VAR                = TO_STR(EOT);
     static char *CONCAT_VAR             = TO_STR(CONCAT);
 
+    static char RANGED_CHAR_VAR         [BUFFER_SIZE];
+    static char QUANTIFIER_EXACT_VAR    [BUFFER_SIZE];
+    static char RANGED_QUANTIFIER_VAR   [BUFFER_SIZE];
+    static char QUANTIFIER_MIN_VAR      [BUFFER_SIZE];
+    static char SYMBOL_VAR              [BUFFER_SIZE];
+
     switch(
         token.class
     ){
     case RANGED_CHAR:
-        static char CHAR_RANGE_VAR[BUFFER_SIZE];
         sprintf(
-            CHAR_RANGE_VAR,
+            RANGED_CHAR_VAR,
             "%s(\"[%c-%c]\")",
-            TO_STR(CHAR_RANGE),
+            TO_STR(RANGED_CHAR),
             (char)token.start,
             (char)token.end
         );
-        return (const char*)CHAR_RANGE_VAR;
+        return (const char*)RANGED_CHAR_VAR;
     case QUANTIFIER_EXACT:
-        static char QUANTIFIER_EXACT_VAR[BUFFER_SIZE];
         sprintf(
             QUANTIFIER_EXACT_VAR,
             "%s(\"{%d}\")",
@@ -67,7 +71,6 @@ const char* yar_token_to_string(
         );
         return (const char*)QUANTIFIER_EXACT_VAR;
     case RANGED_QUANTIFIER:
-        static char RANGED_QUANTIFIER_VAR[BUFFER_SIZE];
         sprintf(
             RANGED_QUANTIFIER_VAR,
             "%s(\"{%d,%d}\")",
@@ -77,17 +80,14 @@ const char* yar_token_to_string(
         );
         return (const char*)RANGED_QUANTIFIER_VAR;
     case QUANTIFIER_MIN:
-        static char QUANTIFIER_MIN_VAR[BUFFER_SIZE];
         sprintf(
             QUANTIFIER_MIN_VAR,
             "%s(\"{%d,}\")",
             TO_STR(QUANTIFIER_MIN),
             token.start
         );
-
         return (const char*)QUANTIFIER_MIN_VAR;
     }
-
 
     switch (token.class)
     {
@@ -112,7 +112,6 @@ const char* yar_token_to_string(
     case CONCAT:
         return (const char*)CONCAT_VAR;
     default:
-        static char SYMBOL_VAR[BUFFER_SIZE];
         sprintf(
             SYMBOL_VAR,
             "%s('%c')",
@@ -128,7 +127,8 @@ const char* yar_token_to_string(
 #endif
 
 Vector* yar_scan(
-    const char* pattern
+    const char* pattern,
+    uint        *err
 ){
     if (
         strlen(pattern) <= 0
@@ -157,6 +157,18 @@ Vector* yar_scan(
 
     free(scanner.tape);
 
+    if (
+        scanner.state 
+    ) {
+        vector_destroy(
+            scanner.tokens
+        );
+
+        *err = scanner.state;
+
+        return NULL;
+    }
+
     return scanner.tokens;
 }
 
@@ -166,6 +178,7 @@ static Scanner scanner_construct(
 
     size_t pattern_size = strlen(pattern) + 1;
     Scanner scanner = {
+        .state      = 0,
         .index      = 0,
         .tape_size  = pattern_size - 1,
         .tape       = calloc(

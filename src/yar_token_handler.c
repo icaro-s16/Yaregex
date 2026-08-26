@@ -77,6 +77,57 @@ static void handler_append_symbol(
     );
 }
 
+static Token handle_invalid_operation_syntax(
+    Scanner *scanner,
+    Vector  *symbols,
+    char   curr
+){
+    Token symbol = {
+        .class  = SYMBOL,
+        .attr   = CHAR
+    };
+    Token concat = {                                            
+        .class  = CONCAT,                                       
+        .attr   = NONE                                          
+    };                                                          
+    if (                                                        
+        scanner->last_token &&                                  
+        (                                                       
+            is_terminal_token(*scanner->last_token)         ||  
+            scanner->last_token->class == CLOSE_PARENTHESES ||  
+            is_quantifier_token(*scanner->last_token)           
+        )                                                       
+    ){                                                          
+        vector_append(                                          
+            &scanner->tokens,                                   
+            &concat                                             
+        );                                                      
+    }                                                           
+    vector_concat(                                              
+        &scanner->tokens,                                       
+        symbols                                                 
+    );                                                          
+    if (                                                        
+        vector_get_size(scanner->tokens) > 0                    
+    ){                                                          
+        scanner->last_token = vector_get(                       
+            scanner->tokens,                                    
+            vector_get_size(scanner->tokens) - 1                
+        );                                                      
+    }                                                           
+    vector_destroy(                                             
+        symbols                                                 
+    );                                                          
+    symbol.ch = curr;                                           
+    if (                                                        
+        curr == '\0'                                            
+    ) {                                                         
+        symbol.class = EOT;                                     
+        symbol.attr  = NONE;                                    
+    }                                                           
+    return symbol;
+}
+
 Token char_tokens_handler(
     Scanner *scanner
 ){
@@ -111,49 +162,7 @@ Token char_tokens_handler(
         };
     }
 }
-
-#define RETURN_INVALID_OP_TOKEN(scanner, symbols, symbol)           \
-        Token concat = {                                            \
-            .class  = CONCAT,                                       \
-            .attr   = NONE                                          \
-        };                                                          \
-        if (                                                        \
-            scanner->last_token &&                                  \
-            (                                                       \
-                is_terminal_token(*scanner->last_token)         ||  \
-                scanner->last_token->class == CLOSE_PARENTHESES ||  \
-                is_quantifier_token(*scanner->last_token)           \
-            )                                                       \
-        ){                                                          \
-            vector_append(                                          \
-                &scanner->tokens,                                   \
-                &concat                                             \
-            );                                                      \
-        }                                                           \
-        vector_concat(                                              \
-            &scanner->tokens,                                       \
-            symbols                                                 \
-        );                                                          \
-        if (                                                        \
-            vector_get_size(scanner->tokens) > 0                    \
-        ){                                                          \
-            scanner->last_token = vector_get(                       \
-                scanner->tokens,                                    \
-                vector_get_size(scanner->tokens) - 1                \
-            );                                                      \
-        }                                                           \
-        vector_destroy(                                             \
-            symbols                                                 \
-        );                                                          \
-        symbol.ch = curr;                                           \
-        if (                                                        \
-            curr == '\0'                                            \
-        ) {                                                         \
-            symbol.class = EOT;                                     \
-            symbol.attr  = NONE;                                    \
-        }                                                           \
-        return symbol
-
+    
 Token ranged_char_handler(
     Scanner *scanner
 ){
@@ -196,7 +205,7 @@ Token ranged_char_handler(
 
     symbol.ch = curr;
     handler_append_symbol(
-        &scanner->tokens,
+        &symbols,
         symbol
     );
 
@@ -207,16 +216,16 @@ Token ranged_char_handler(
     if (
         !isalpha(curr)
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
 
     symbol.ch = curr;
     handler_append_symbol(
-        &scanner->tokens,
+        &symbols,
         symbol
     );
 
@@ -227,16 +236,16 @@ Token ranged_char_handler(
     if (
         curr != '-'
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
 
     symbol.ch = curr;
     handler_append_symbol(
-        &scanner->tokens,
+        &symbols,
         symbol
     );
 
@@ -247,16 +256,16 @@ Token ranged_char_handler(
     if (
         !isalpha(curr)
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
 
     symbol.ch = curr;
     handler_append_symbol(
-        &scanner->tokens,
+        &symbols,
         symbol
     );
     token.end = (int)curr;
@@ -267,15 +276,22 @@ Token ranged_char_handler(
     if (
         curr != ']'
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
     vector_destroy(
         symbols
     );
+
+    scanner->state |= (
+        token.start >= token.end 
+    ) ?
+    SCANNER_INVALID_RANGED_CHAR :
+    scanner->state;
+
     return token;
 }
 
@@ -331,10 +347,10 @@ Token quantifier_handler(
     if (
         !isdigit(curr)
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
     append_number_symbols(
@@ -353,16 +369,23 @@ Token quantifier_handler(
         vector_destroy(
             symbols
         );
+
+        scanner->state |= (
+            !token.start 
+        ) ? 
+        SCANNER_INVALID_QUANTIFIER : 
+        scanner->state;
+
         token.class = QUANTIFIER_EXACT;
         return token;
     }
     if (
         curr != ','
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
     
@@ -380,16 +403,23 @@ Token quantifier_handler(
         vector_destroy(
             symbols
         );
+
+        scanner->state |= (
+            !token.start 
+        ) ? 
+        SCANNER_INVALID_QUANTIFIER : 
+        scanner->state;
+
         token.class = QUANTIFIER_MIN;
         return token;
     }
     if (
         !isdigit(curr)
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
     
@@ -406,15 +436,27 @@ Token quantifier_handler(
     if (
         curr != '}'
     ){
-        RETURN_INVALID_OP_TOKEN(
+        return handle_invalid_operation_syntax(
             scanner,
             symbols,
-            symbol
+            curr
         );
     }
     vector_destroy(
         symbols
     );
+
+    scanner->state |= (
+        !token.start 
+    ) ? 
+    SCANNER_INVALID_QUANTIFIER : 
+    scanner->state;
+
+    scanner->state |= (
+        token.start >= token.end
+    ) ? 
+    SCANNER_INVALID_RANGED_QUANTIFIER :
+    scanner->state;
 
     token.class = RANGED_QUANTIFIER;
     return token;
