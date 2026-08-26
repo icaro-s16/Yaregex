@@ -1,133 +1,6 @@
 #include <ctype.h>
 #include "yar_token_handler.h"
 
-static uint str_to_uint(
-    Scanner *scanner
-){
-    uint val = 0;
-    char curr = scanner->tape[
-        scanner->index
-    ];
-
-    while (
-        isdigit(
-            curr
-        )
-    ){
-        val = val * 10 + (curr - 48); 
-        curr = scanner->tape[
-            ++scanner->index
-        ];
-    }
-
-    return val;
-}
-
-static void append_number_symbols(
-    const Scanner *scanner,
-    Vector **symbols
-){
-    uint initial_idx = scanner->index;
-
-    for(
-        char curr = scanner->tape[
-            initial_idx
-        ];
-        isdigit(curr) && curr != '\0';
-    ){  
-        Token symbol = {
-            .class  = SYMBOL,
-            .attr   = CHAR, 
-            .ch     = curr
-        };
-
-        handler_append_symbol(
-            symbols,
-            symbol
-        );
-
-        curr = scanner->tape[
-            ++initial_idx
-        ];
-    }
-
-}
-
-static void handler_append_symbol(
-    Vector **tokens, 
-    Token symbol
-){
-    Token concat = {
-        .class  = CONCAT,
-        .attr   = NONE 
-    };
-
-    if (
-        vector_get_size(
-            *tokens
-        ) 
-    ) vector_append(
-        tokens,
-        &concat
-    );
-
-    vector_append(
-        tokens,
-        &symbol
-    );
-}
-
-static Token handle_invalid_operation_syntax(
-    Scanner *scanner,
-    Vector  *symbols,
-    char   curr
-){
-    Token symbol = {
-        .class  = SYMBOL,
-        .attr   = CHAR
-    };
-    Token concat = {                                            
-        .class  = CONCAT,                                       
-        .attr   = NONE                                          
-    };                                                          
-    if (                                                        
-        scanner->last_token &&                                  
-        (                                                       
-            is_terminal_token(*scanner->last_token)         ||  
-            scanner->last_token->class == CLOSE_PARENTHESES ||  
-            is_quantifier_token(*scanner->last_token)           
-        )                                                       
-    ){                                                          
-        vector_append(                                          
-            &scanner->tokens,                                   
-            &concat                                             
-        );                                                      
-    }                                                           
-    vector_concat(                                              
-        &scanner->tokens,                                       
-        symbols                                                 
-    );                                                          
-    if (                                                        
-        vector_get_size(scanner->tokens) > 0                    
-    ){                                                          
-        scanner->last_token = vector_get(                       
-            scanner->tokens,                                    
-            vector_get_size(scanner->tokens) - 1                
-        );                                                      
-    }                                                           
-    vector_destroy(                                             
-        symbols                                                 
-    );                                                          
-    symbol.ch = curr;                                           
-    if (                                                        
-        curr == '\0'                                            
-    ) {                                                         
-        symbol.class = EOT;                                     
-        symbol.attr  = NONE;                                    
-    }                                                           
-    return symbol;
-}
-
 Token char_tokens_handler(
     Scanner *scanner
 ){
@@ -147,7 +20,6 @@ Token char_tokens_handler(
         case token_symbol:                  \
             return (Token){                 \
                 .class      = token_name,   \
-                .attr       = NONE,         \
             };
     
     CHAR_TOKENS(X)
@@ -157,7 +29,6 @@ Token char_tokens_handler(
     default:
         return (Token){
             .class      = SYMBOL,
-            .attr       = CHAR,
             .ch         = ch  
         };
     }
@@ -172,16 +43,14 @@ Token ranged_char_handler(
     );
 
     Token symbol = {
-        .class  = SYMBOL,
-        .attr   = CHAR
+        .class  = SYMBOL
     };
 
     Vector *symbols = vector_construct(
         sizeof(Token)
     );
     Token token = {
-        .class = RANGED_CHAR,
-        .attr  = RANGE
+        .class = RANGED_CHAR
     };
     char curr = scanner->tape[
         scanner->index
@@ -193,10 +62,8 @@ Token ranged_char_handler(
         symbol.ch = curr;
         if (
             curr == '\0'
-        ) {
-            symbol.class = EOT;
-            symbol.attr  = NONE;
-        }
+        ) symbol.class = EOT;
+        
         vector_destroy(
             symbols
         );
@@ -302,16 +169,13 @@ Token quantifier_handler(
         scanner && 
         scanner->tape 
     );
-    Token token = {
-        .attr = RANGE
-    };
+    Token token;
 
     Vector *symbols = vector_construct(
         sizeof(Token)
     );
     Token symbol = {
-        .class  = SYMBOL,
-        .attr   = CHAR
+        .class  = SYMBOL
     };
 
     char curr = scanner->tape[
@@ -327,10 +191,8 @@ Token quantifier_handler(
         symbol.ch = curr;
         if (
             curr == '\0'
-        ) {
-            symbol.class = EOT;
-            symbol.attr  = NONE;
-        }
+        ) symbol.class = EOT;
+        
         return symbol;
     }
     
@@ -462,8 +324,6 @@ Token quantifier_handler(
     return token;
 }
 
-#undef RETURN_INVALID_OP_TOKEN
-
 Token backslash_handler(
     Scanner *scanner
 ){
@@ -477,8 +337,7 @@ Token backslash_handler(
     ];
 
     Token symbol = {
-        .class  = SYMBOL,
-        .attr   = CHAR
+        .class  = SYMBOL
     };
 
     if (
@@ -498,19 +357,15 @@ Token backslash_handler(
     ){
     case 'd':
         token.class = ANY_DIGIT;
-        token.attr  = NONE;
         return token; 
     case 'D':
         token.class = ANY_NON_DIGIT;
-        token.attr  = NONE;
         return token;
     case 's':
         token.class = ANY_WHITESPACE;
-        token.attr  = NONE;
         return token;
     case 'S':
         token.class = ANY_NON_WHITESPACE;
-        token.attr  = NONE;
         return token;
     case '*': case '+': case '\\': case '|': case '.': case '(': 
     case ')': case '^': case '$': case '[': case ']': case '{':
@@ -519,8 +374,7 @@ Token backslash_handler(
         return token;
     default:{
         Token concat = {
-            .class  = CONCAT,
-            .attr   = NONE
+            .class  = CONCAT
         };
         if (
             scanner->last_token &&
@@ -540,11 +394,131 @@ Token backslash_handler(
         symbol.ch = curr;
         if (
             curr == '\0'
-        ){
-            token.attr  = NONE;
-            token.class = EOT;
-        }
+        ) token.class = EOT;
+        
         return symbol;
     }
     }
+}
+
+
+static uint str_to_uint(
+    Scanner *scanner
+){
+    uint val = 0;
+    char curr = scanner->tape[
+        scanner->index
+    ];
+
+    while (
+        isdigit(
+            curr
+        )
+    ){
+        val = val * 10 + (curr - 48); 
+        curr = scanner->tape[
+            ++scanner->index
+        ];
+    }
+
+    return val;
+}
+
+static void append_number_symbols(
+    const Scanner *scanner,
+    Vector **symbols
+){
+    uint initial_idx = scanner->index;
+
+    for(
+        char curr = scanner->tape[
+            initial_idx
+        ];
+        isdigit(curr) && curr != '\0';
+    ){  
+        Token symbol = {
+            .class  = SYMBOL,
+            .ch     = curr
+        };
+
+        handler_append_symbol(
+            symbols,
+            symbol
+        );
+
+        curr = scanner->tape[
+            ++initial_idx
+        ];
+    }
+
+}
+
+static void handler_append_symbol(
+    Vector **tokens, 
+    Token symbol
+){
+    Token concat = {
+        .class  = CONCAT
+    };
+
+    if (
+        vector_get_size(
+            *tokens
+        ) 
+    ) vector_append(
+        tokens,
+        &concat
+    );
+
+    vector_append(
+        tokens,
+        &symbol
+    );
+}
+
+static Token handle_invalid_operation_syntax(
+    Scanner *scanner,
+    Vector  *symbols,
+    char   curr
+){
+    Token symbol = {
+        .class  = SYMBOL
+    };
+    Token concat = {                                            
+        .class  = CONCAT                                     
+    };                                                          
+    if (                                                        
+        scanner->last_token &&                                  
+        (                                                       
+            is_terminal_token(*scanner->last_token)         ||  
+            scanner->last_token->class == CLOSE_PARENTHESES ||  
+            is_quantifier_token(*scanner->last_token)           
+        )                                                       
+    ){                                                          
+        vector_append(                                          
+            &scanner->tokens,                                   
+            &concat                                             
+        );                                                      
+    }                                                           
+    vector_concat(                                              
+        &scanner->tokens,                                       
+        symbols                                                 
+    );                                                          
+    if (                                                        
+        vector_get_size(scanner->tokens) > 0                    
+    ){                                                          
+        scanner->last_token = vector_get(                       
+            scanner->tokens,                                    
+            vector_get_size(scanner->tokens) - 1                
+        );                                                      
+    }                                                           
+    vector_destroy(                                             
+        symbols                                                 
+    );                                                          
+    symbol.ch = curr;                                           
+    if (                                                        
+        curr == '\0'                                            
+    ) symbol.class = EOT;                                     
+                                                               
+    return symbol;
 }

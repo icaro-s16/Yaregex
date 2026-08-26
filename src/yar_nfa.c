@@ -1,5 +1,4 @@
 #include "yar_nfa.h"
-#include <stdio.h>
 
 
 FSM yar_nfa_construct(
@@ -368,44 +367,46 @@ static FsmFragment* qmark_fsm_fragment(
     assert(
         left
     );
-    
+
+    FsmFragment *res = calloc(
+        1,
+        sizeof(FsmFragment)
+    );
+
+    res->initial_state = calloc(
+        1,
+        sizeof(FsmFragment)
+    );
+
+    res->initial_state->transitions = vector_construct(
+        sizeof(Transition)
+    );
+
+    vector_append(
+        &states,
+        &res->initial_state
+    );
+
+    res->final_state = calloc(
+        1,
+        sizeof(FsmFragment)
+    );
+
+    vector_append(
+        &states,
+        &res->final_state
+    );
+
     Transition *transition = calloc(
         1,
         sizeof(Transition)
     );
 
     transition->is_empty = 1;
-    transition->dest = left->final_state;
+    transition->dest = left->initial_state;
 
     vector_append(
-        &left->initial_state->transitions,
-        &transition
-    );
-
-    free(
-        transition
-    );
-    
-    return left;
-}
-
-static FsmFragment* star_fsm_fragment(
-    FsmFragment *left, 
-    Vector *states
-){
-    assert(
-        left 
-    );
-
-    Transition *transition = calloc(
-        1,
-        sizeof(Transition)
-    );
-    transition->dest = left->final_state;
-    transition->is_empty = 1;
-
-    vector_append(
-        &left->initial_state->transitions,
+        &res->initial_state->transitions,
         transition
     );
 
@@ -417,15 +418,98 @@ static FsmFragment* star_fsm_fragment(
         );
     }
 
-    transition->dest = left->initial_state;
     vector_append(
         &left->final_state->transitions,
         transition
     );
+
     free(
         transition
     );
-    return left;
+    
+    return res;
+}
+
+static FsmFragment* star_fsm_fragment(
+    FsmFragment *left, 
+    Vector *states
+){
+    assert(
+        left 
+    );
+
+    FsmFragment *res = calloc(
+        1,
+        sizeof(FsmFragment)
+    );
+
+    res->initial_state = calloc(
+        1,
+        sizeof(FsmFragment)
+    );
+
+    res->initial_state->transitions = vector_construct(
+        sizeof(Transition)
+    );
+
+    vector_append(
+        &states,
+        &res->initial_state
+    );
+
+    res->final_state = calloc(
+        1,
+        sizeof(FsmFragment)
+    );
+
+    res->final_state->transitions = vector_construct(
+        sizeof(Transition)
+    );
+
+    vector_append(
+        &states,
+        &res->final_state
+    );
+
+    Transition *transition = calloc(
+        1,
+        sizeof(Transition)
+    );
+    transition->is_empty = 1;
+    transition->dest = left->initial_state;
+
+    vector_append(
+        &res->initial_state->transitions,
+        transition
+    );
+
+    transition->dest = res->final_state;
+
+    if (
+        !left->final_state->transitions
+    ) {
+        left->final_state->transitions = vector_construct(
+            sizeof(Transition)
+        );
+    }
+
+    vector_append(
+        &left->final_state->transitions,
+        transition
+    );
+
+    transition->dest = left->initial_state;
+
+    vector_append(
+        &left->final_state->transitions,
+        transition
+    );
+
+    free(
+        transition
+    );
+    
+    return res;
 }
 
 static FsmFragment* plus_fsm_fragment(

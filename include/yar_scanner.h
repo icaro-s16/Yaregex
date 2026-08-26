@@ -39,15 +39,8 @@ typedef enum{
     EOT
 }TokenClass;
 
-typedef enum{
-    CHAR,
-    RANGE,
-    NONE
-}TokenAttr;
-
 typedef struct{
     TokenClass class;
-    TokenAttr  attr;
     union{
         struct{
             int start, end;

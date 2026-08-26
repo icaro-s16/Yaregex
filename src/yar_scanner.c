@@ -172,6 +172,32 @@ Vector* yar_scan(
     return scanner.tokens;
 }
 
+int is_terminal_token(
+    const Token token
+){
+    return (
+        token.class == SYMBOL              ||
+        token.class == ANY_DIGIT           ||
+        token.class == ANY_NON_DIGIT       ||
+        token.class == ANY_WHITESPACE      ||
+        token.class == ANY_NON_WHITESPACE  ||
+        token.class == RANGED_CHAR 
+    ) ? 1 : 0;
+}
+
+int is_quantifier_token(
+    const Token token
+){
+    return (
+        token.class == STAR              ||
+        token.class == PLUS              ||
+        token.class == QMARK             ||
+        token.class == QUANTIFIER_EXACT  ||
+        token.class == QUANTIFIER_MIN    ||
+        token.class == RANGED_QUANTIFIER      
+    ) ? 1 : 0;
+}
+
 static Scanner scanner_construct(
     const char *pattern
 ){
@@ -227,7 +253,6 @@ static int scanner_consume(
     ){
         Token token = (Token){
             .class      = EOT, 
-            .attr       = CHAR,
             .ch         = '\0'
         };
         vector_append(
@@ -303,8 +328,7 @@ static int scanner_consume(
     }
     default:{
         Token concat = {
-            .class = CONCAT,
-            .attr  = NONE,
+            .class = CONCAT
         };
 
         Token token = char_tokens_handler(
@@ -327,8 +351,7 @@ static void scanner_append_symbol(
 ){
     
     Token concat = {
-        .class  = CONCAT,
-        .attr   = NONE
+        .class  = CONCAT
     };
 
     /* 
@@ -386,30 +409,4 @@ static void scanner_append_symbol(
         scanner->tokens,
         vector_get_size(scanner->tokens) - 1
     );
-}
-
-int is_terminal_token(
-    const Token token
-){
-    return (
-        token.class == SYMBOL              ||
-        token.class == ANY_DIGIT           ||
-        token.class == ANY_NON_DIGIT       ||
-        token.class == ANY_WHITESPACE      ||
-        token.class == ANY_NON_WHITESPACE  ||
-        token.class == RANGED_CHAR 
-    ) ? 1 : 0;
-}
-
-int is_quantifier_token(
-    const Token token
-){
-    return (
-        token.class == STAR              ||
-        token.class == PLUS              ||
-        token.class == QMARK             ||
-        token.class == QUANTIFIER_EXACT  ||
-        token.class == QUANTIFIER_MIN    ||
-        token.class == RANGED_QUANTIFIER      
-    ) ? 1 : 0;
 }

@@ -367,8 +367,7 @@ static AstNode* translate_quantifier_exact(
     Token curr
 ){
     Token concat = {
-        .class  = CONCAT,
-        .attr   = NONE
+        .class  = CONCAT
     };
     
     if (
@@ -412,8 +411,7 @@ static AstNode* translate_quantifier_min(
     );
 
     Token star = {
-        .class  = STAR,
-        .attr   = NONE
+        .class  = STAR
     };
 
     left = ast_node_construct(
@@ -434,13 +432,11 @@ static AstNode* trasnlate_ranged_quantifier(
     );
     
     Token concat = {
-        .class  = CONCAT,
-        .attr   = NONE
+        .class  = CONCAT
     };
 
     Token qmark = {
-        .class  = QMARK,
-        .attr   = NONE
+        .class  = QMARK
     };
 
     if (
@@ -686,8 +682,7 @@ static AstNode* grouping_expr(
     }
 
     Token eot_token = {
-        .class  = EOT,
-        .attr   = NONE
+        .class  = EOT
     };
 
     vector_append(
