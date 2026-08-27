@@ -667,7 +667,10 @@ static AstNode* grouping_expr(
     if (
         vector_get_size(
             stack
-        ) > 0
+        ) > 0 ||
+        vector_get_size(
+            grouping_tokens
+        ) == 0
     ){
         vector_destroy(
             stack

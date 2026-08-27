@@ -4,11 +4,11 @@
 
 
 int main(){
-    parser_test(
-        ".@([a-Z])+(.[a-Z]+)?"
+    scanner_test(
+        "a()"
     );
     parser_test(
-        "(a(((((a))))))"
+        "a()"
     );
     return 0;
 }
