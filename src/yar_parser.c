@@ -112,6 +112,12 @@ AstNode* yar_ast_construct(
         err
     );
 
+    if (
+        *err 
+    ){
+        return NULL;
+    }
+
     Parser parser = parser_construct(
         tokens
     );
@@ -121,7 +127,7 @@ AstNode* yar_ast_construct(
     );
 
     if (
-        parser.state != 0
+        parser.state
     ){
         if (
             root
@@ -726,7 +732,7 @@ static AstNode* terminal(
      * the corresponding OPEN_PARENTHESES.
      */
     if (
-        curr.class == CLOSE_PARENTHESES
+        curr.class == CLOSE_PARENTHESES 
     ){
         parser->state |= PARSER_INVALID_GROUPING;
     }

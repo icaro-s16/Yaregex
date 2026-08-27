@@ -181,7 +181,8 @@ int is_terminal_token(
         token.class == ANY_NON_DIGIT       ||
         token.class == ANY_WHITESPACE      ||
         token.class == ANY_NON_WHITESPACE  ||
-        token.class == RANGED_CHAR 
+        token.class == RANGED_CHAR         ||
+        token.class == WILDCARD
     ) ? 1 : 0;
 }
 
@@ -355,12 +356,6 @@ static void scanner_append_symbol(
     };
 
     /* 
-     * NOTE: Maybe I should try to find 
-     * another way to deal with implicit 
-     * concatenation. This if statement 
-     * is ugly, but it handles all possible 
-     * concatenations.
-     * 
      * Concatenation cases:
      * 
      * 1. symbol concat symbol
@@ -373,25 +368,16 @@ static void scanner_append_symbol(
         scanner->last_token && 
         (
             (
-                is_terminal_token(*scanner->last_token) &&
-                is_terminal_token(symbol)
-            ) ||
-            (
-                scanner->last_token->class == CLOSE_PARENTHESES &&
-                is_terminal_token(symbol)
-            ) ||
-            (
-                is_quantifier_token(*scanner->last_token) &&
-                is_terminal_token(symbol)
-            ) ||
-            (
-                scanner->last_token->class == CLOSE_PARENTHESES &&
-                symbol.class == OPEN_PARENTHESES
-            ) ||
-            (
-                is_terminal_token(*scanner->last_token) &&
-                symbol.class == OPEN_PARENTHESES
-            )
+                (
+                    scanner->last_token->class == CLOSE_PARENTHESES ||
+                    is_terminal_token(*scanner->last_token)         ||
+                    is_quantifier_token(*scanner->last_token)
+                )&&
+                (
+                    is_terminal_token(symbol)                       ||
+                    symbol.class == OPEN_PARENTHESES
+                )
+            ) 
         )
     ){
         vector_append(

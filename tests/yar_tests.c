@@ -5,7 +5,10 @@
 
 int main(){
     parser_test(
-        "((maria)*|(icaro)*)*|(icaro e maria)"
+        ".@([a-Z])+(.[a-Z]+)?"
+    );
+    parser_test(
+        "(a(((((a))))))"
     );
     return 0;
 }

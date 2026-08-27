@@ -22,6 +22,7 @@ void parser_test(
     }
     else {
         yar_print_ast(root);
+        yar_ast_destroy(root);
     }
-    yar_ast_destroy(root);
+    
 }

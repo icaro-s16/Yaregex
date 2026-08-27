@@ -154,7 +154,7 @@ Token ranged_char_handler(
     );
 
     scanner->state |= (
-        token.start >= token.end 
+        token.start <= token.end 
     ) ?
     SCANNER_INVALID_RANGED_CHAR :
     scanner->state;
