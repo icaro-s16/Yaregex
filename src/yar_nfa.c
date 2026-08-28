@@ -3,14 +3,30 @@
 
 FSM yar_nfa_construct(
     const char  *pattern,
-    uint        *err
+    uint8_t     *err
 ){
+
+    Vector *tokens = yar_scan(
+        pattern,
+        err
+    );
+
+    if (
+        *err 
+    ) {
+        vector_destroy(
+            tokens
+        );
+
+        return (FSM){0};
+    }
+
     Vector *states = vector_construct(
         sizeof(State*)
     );
 
     AstNode *root = yar_ast_construct(
-        pattern,
+        tokens,
         err
     );
 
@@ -23,6 +39,10 @@ FSM yar_nfa_construct(
 
         vector_destroy(
             states
+        );
+
+        vector_destroy(
+            tokens
         );
 
         return (FSM){0};
@@ -39,8 +59,18 @@ FSM yar_nfa_construct(
 
     fsm_fragment->final_state->is_final = 1;
 
+    Vector *alphabet = get_alphabet(
+        tokens
+    );
+
+    vector_destroy(
+        tokens
+    );
+
     return (FSM){
+        .type           = NFA,
         .fsm_fragment   = fsm_fragment,
+        .alphabet       = alphabet,
         .states         = states
     };
 }
@@ -49,9 +79,10 @@ void yar_nfa_destroy(
     FSM *fsm
 ){
     assert(
-        fsm && 
-        fsm->fsm_fragment && 
-        fsm->states
+        fsm                 && 
+        fsm->fsm_fragment   && 
+        fsm->states         &&
+        fsm->type == NFA 
     );
 
 
@@ -83,11 +114,70 @@ void yar_nfa_destroy(
     vector_destroy(
         fsm->states
     );
+
+    fsm->fsm_fragment = NULL;
+    fsm->states = NULL;
+}
+
+static Vector* get_alphabet(
+    Vector *tokens
+){
+    assert(
+        tokens
+    );
+
+    Vector *alphabet = vector_construct(
+        sizeof(Token)
+    );
+
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            tokens
+        ); 
+        idx ++
+    ){
+        Token curr = *((Token*)(vector_get(
+            tokens,
+            idx
+        )));
+
+        if (
+            is_terminal_token(
+                curr
+            ) && (
+                vector_find(
+                    alphabet,
+                    &curr,
+                    sizeof(Token)
+                ) < 0
+            ) 
+        ) continue;
+
+        vector_append(
+            &alphabet,
+            &curr
+        );
+
+    }
+
+    if (
+        !vector_get_size(
+            alphabet
+        ) 
+    ) {
+        vector_destroy(
+            alphabet
+        );
+        return NULL;
+    }
+
+    return alphabet;
 }
 
 static FsmFragment* fsm_fragment_construct(
     AstNode *root,
-    Vector *states
+    Vector  *states
 ){
     assert(
         states

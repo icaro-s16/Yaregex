@@ -9,7 +9,7 @@ struct AstNode{
 };
 
 typedef struct{
-    uint    state;
+    uint8_t state;
     size_t  index;
     Vector  *tokens;
 }Parser;
@@ -20,7 +20,7 @@ void yar_print_ast(AstNode *root);
 
 #endif
 
-AstNode* yar_ast_construct(const char *pattern, uint *err);
+AstNode* yar_ast_construct(Vector *tokens, uint8_t *err);
 
 void yar_ast_destroy(AstNode *root);
 

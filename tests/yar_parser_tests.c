@@ -5,8 +5,24 @@
 void parser_test(
     char *pattern
 ){ 
-    uint err = 0;
-    AstNode *root = yar_ast_construct(pattern, &err);
+    uint8_t err = 0;
+    Vector *tokens = yar_scan(pattern, &err);
+
+    if (
+        err 
+    ){
+        vector_destroy(
+            tokens
+        );
+
+        return;
+    }
+
+    AstNode *root = yar_ast_construct(
+        tokens, 
+        &err
+    );
+    
     if (
         err != 0
     ){

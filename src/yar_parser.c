@@ -95,7 +95,7 @@ void yar_print_ast(
 #endif 
 
 /*
- * NOTE 1: When an AST is created, multiple syntax errors 
+ * NOTE: When an AST is created, multiple syntax errors 
  * can occur. These are combined as bit flags within 
  * the err variable. To check which specific error 
  * occurred, use a bitwise AND operation (e.g., err & ERROR). 
@@ -103,12 +103,12 @@ void yar_print_ast(
  * 
  */
 AstNode* yar_ast_construct(
-    const char *pattern,
-    uint *err
+    Vector      *tokens,
+    uint8_t     *err
 ){
-    
-    Vector *tokens = yar_scan(
-        pattern,
+
+    assert(
+        tokens && 
         err
     );
 
@@ -171,6 +171,7 @@ void yar_ast_destroy(
     free(
         root
     );
+    root = NULL;
 }
 
 static AstNode* clone_ast(
@@ -306,7 +307,7 @@ static AstNode* alternation_expr(
         if (
             !left ||
             !right 
-        ) parser->state = PARSER_INVALID_ALTERNATION;
+        ) parser->state |= PARSER_INVALID_ALTERNATION;
         
         left = ast_node_construct(
             curr,
@@ -527,6 +528,10 @@ static AstNode* quantifier_expr(
             curr
         )
     ) {
+        assert(
+            !right
+        );
+
         parser->index += 1;
 
         /*
@@ -637,6 +642,10 @@ static AstNode* grouping_expr(
                 &stack,
                 &curr.class
             );
+            vector_append(
+                &grouping_tokens,
+                &curr.class
+            );
         }
         else if (
             curr.class == CLOSE_PARENTHESES
@@ -647,21 +656,25 @@ static AstNode* grouping_expr(
                     stack
                 ) - 1
             );
-        }
 
-        if (
-            curr.class != CLOSE_PARENTHESES ||
-            (
-                curr.class == CLOSE_PARENTHESES &&
+            if (
                 vector_get_size(
                     stack
                 ) > 0
-            )
-        )
+            ) {
+                vector_append(
+                    &grouping_tokens,
+                    &curr
+                );
+            }
+
+        }else {
             vector_append(
                 &grouping_tokens,
                 &curr
             );
+        }
+
     }
 
     if (
@@ -703,9 +716,15 @@ static AstNode* grouping_expr(
         grouping_tokens
     );
 
-    left = alternation_expr(
-        &grouping_parser
-    );
+    if (
+        !(
+            left = alternation_expr(
+                &grouping_parser
+            )
+        )
+    ) parser->state |= PARSER_INVALID_GROUPING;
+
+    parser->state |= grouping_parser.state;
 
     vector_destroy(
         stack

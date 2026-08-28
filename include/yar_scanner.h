@@ -1,5 +1,6 @@
 #pragma once 
 
+#include <stdint.h>
 #include "vector.h"
 #include "yar_err_flags.h"
 
@@ -50,12 +51,12 @@ typedef struct{
 }Token;
 
 typedef struct{
-    size_t  index;
-    size_t  tape_size;
+    uint8_t state;
     char    *tape; 
     Vector  *tokens; 
     Token   *last_token;
-    uint    state;
+    size_t  index;
+    size_t  tape_size;
 }Scanner;
 
 #ifdef YAR_DEBUG
@@ -64,13 +65,15 @@ const char* yar_token_to_string(Token token);
 
 #endif
 
-Vector* yar_scan(const char *pattern, uint *err);
+Vector* yar_scan(const char *pattern, uint8_t *err);
 
 int is_terminal_token(const Token token);
 
 int is_quantifier_token(const Token token);
 
 static Scanner scanner_construct(const char *pattern);
+
+static void scanner_destroy(Scanner *scanner);
 
 static int scanner_consume(Scanner *scanner);
 

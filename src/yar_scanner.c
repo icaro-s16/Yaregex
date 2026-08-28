@@ -128,7 +128,7 @@ const char* yar_token_to_string(
 
 Vector* yar_scan(
     const char* pattern,
-    uint        *err
+    uint8_t     *err
 ){
     if (
         strlen(pattern) <= 0
@@ -142,9 +142,9 @@ Vector* yar_scan(
         pattern
     );
 
-    int state;
+    uint8_t tape_state;
     do {
-        state = scanner_consume(
+        tape_state = scanner_consume(
             &scanner
         );
         scanner.last_token = vector_get(
@@ -152,10 +152,12 @@ Vector* yar_scan(
             vector_get_size(scanner.tokens) - 1
         );
     }while(
-        state != SCANNER_EMPTY_TAPE
+        tape_state != SCANNER_EMPTY_TAPE
     );
 
-    free(scanner.tape);
+    scanner_destroy(
+        &scanner
+    );
 
     if (
         scanner.state 
@@ -229,6 +231,22 @@ static Scanner scanner_construct(
     );
 
     return scanner;
+}
+
+static void scanner_destroy(
+    Scanner *scanner
+){
+    assert(
+        scanner &&
+        scanner->tape
+    );
+
+    free(
+        scanner->tape
+    );
+    scanner->tape = NULL;
+
+    scanner->last_token = NULL;
 }
 
 static int scanner_consume(

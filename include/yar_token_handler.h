@@ -2,7 +2,7 @@
 
 #include "yar_scanner.h"
 
-Token char_tokens_handler(Scanner* scanner);
+Token char_tokens_handler(Scanner *scanner);
 
 Token ranged_char_handler(Scanner *scanner);
 
