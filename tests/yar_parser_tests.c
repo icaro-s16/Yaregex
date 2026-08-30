@@ -40,5 +40,4 @@ void parser_test(
         yar_print_ast(root);
         yar_ast_destroy(root);
     }
-    
 }

@@ -23,11 +23,7 @@ static SUnion sunion_destroy(SUnion *sunion);
 
 static int sunion_compare(SUnion *su1, SUnion *su2);
 
-/*
- * NOTE: The old NFA will be 
- * destroyed.
- */
-static SUnion* nfa_to_dfa(State *curr, Vector *alphabet, Vector *valid_states, Vector *invalid_states);
+static void nfa_to_dfa(SUnion *curr, SUTransition *curr_transition, Vector *alphabet, Vector *states);
 
 static void empty_transitions_closure(State *curr, Vector *states);
 
