@@ -140,10 +140,6 @@ AstNode* yar_ast_construct(
         root = NULL;
     }
 
-    parser_destroy(
-        &parser
-    );
-
     return root;
 }
 
@@ -218,19 +214,6 @@ static Parser parser_construct(
         .index          = 0,
         .tokens         = tokens
     };
-}
-
-static void parser_destroy(
-    Parser *parser
-){
-    assert(
-        parser &&
-        parser->tokens
-    );
-
-    vector_destroy(
-        parser->tokens
-    );
 }
 
 static AstNode* ast_node_construct(
@@ -729,8 +712,8 @@ static AstNode* grouping_expr(
     vector_destroy(
         stack
     );
-    parser_destroy(
-        &grouping_parser
+    vector_destroy(
+        grouping_tokens
     );
 
     return left;

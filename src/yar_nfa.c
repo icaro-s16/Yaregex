@@ -131,34 +131,53 @@ static Vector* get_alphabet(
     );
 
     for(
-        int idx = 0;
-        idx < vector_get_size(
+        int token_idx = 0;
+        token_idx < vector_get_size(
             tokens
         ); 
-        idx ++
+        token_idx ++
     ){
-        Token curr = *((Token*)(vector_get(
+        Token curr_token = *((Token*)(vector_get(
             tokens,
-            idx
+            token_idx
         )));
 
         if (
-            is_terminal_token(
-                curr
-            ) && (
-                vector_find(
-                    alphabet,
-                    &curr,
-                    sizeof(Token)
-                ) < 0
+            !is_terminal_token(
+                curr_token
             ) 
         ) continue;
 
-        vector_append(
-            &alphabet,
-            &curr
-        );
+        int is_new_symbol = 1;
 
+        for(
+            int symbol_idx = 0;
+            symbol_idx < vector_get_size(
+                alphabet
+            );
+            symbol_idx++
+        ){
+            Token curr_symbol = *((Token*)(vector_get(
+                alphabet,
+                symbol_idx
+            )));
+
+            if (
+                curr_symbol.ch == curr_token.ch
+            ) {
+                is_new_symbol = 0;
+                break;
+            }
+        }
+
+        if (
+            is_new_symbol
+        ) {
+            vector_append(
+                &alphabet,
+                &curr_token
+            );
+        }
     }
 
     if (
@@ -487,17 +506,22 @@ static FsmFragment* qmark_fsm_fragment(
         &res->final_state
     );
 
-    Transition *transition = calloc(
-        1,
-        sizeof(Transition)
-    );
+    Transition transition = {
+        .is_empty = 1
+    };
 
-    transition->is_empty = 1;
-    transition->dest = left->initial_state;
+    transition.dest = left->initial_state;
 
     vector_append(
         &res->initial_state->transitions,
-        transition
+        &transition
+    );
+
+    transition.dest = res->final_state;
+
+    vector_append(
+        &res->initial_state->transitions,
+        &transition
     );
 
     if (
@@ -507,14 +531,11 @@ static FsmFragment* qmark_fsm_fragment(
             sizeof(Transition)
         );
     }
+    transition.dest = res->final_state;
 
     vector_append(
         &left->final_state->transitions,
-        transition
-    );
-
-    free(
-        transition
+        &transition
     );
     
     return res;
@@ -561,19 +582,23 @@ static FsmFragment* star_fsm_fragment(
         &res->final_state
     );
 
-    Transition *transition = calloc(
-        1,
-        sizeof(Transition)
-    );
-    transition->is_empty = 1;
-    transition->dest = left->initial_state;
+    Transition transition =  {
+        .is_empty = 1
+    };
+    
+    transition.dest = left->initial_state;
 
     vector_append(
         &res->initial_state->transitions,
-        transition
+        &transition
     );
 
-    transition->dest = res->final_state;
+    transition.dest = res->final_state;
+
+    vector_append(
+        &res->initial_state->transitions,
+        &transition
+    );
 
     if (
         !left->final_state->transitions
@@ -585,18 +610,14 @@ static FsmFragment* star_fsm_fragment(
 
     vector_append(
         &left->final_state->transitions,
-        transition
+        &transition
     );
 
-    transition->dest = left->initial_state;
+    transition.dest = left->initial_state;
 
     vector_append(
         &left->final_state->transitions,
-        transition
-    );
-
-    free(
-        transition
+        &transition
     );
     
     return res;

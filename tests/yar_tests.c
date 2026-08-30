@@ -2,9 +2,23 @@
 #include "yar_dfa.h"
 
 int main(){
-    char *pattern = "a*";
-    parser_test(pattern);
+    char *pattern = "a?";
+    char *text = "axc";
     uint8_t err = 0;
-    yar_dfa_construct(pattern, &err);
+    FSM dfa = yar_dfa_construct(
+        pattern,
+        &err
+    );
+
+    printf(
+        "%s\n",
+        (
+            yar_dfa_match(
+                &dfa, 
+                text
+            )
+        ) ? "True" : "False"
+    );
+
     return 0;
 }

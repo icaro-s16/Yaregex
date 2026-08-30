@@ -1,6 +1,59 @@
 #include "yar_dfa.h"
 #include <stdio.h>
 
+int yar_dfa_match(
+    FSM *dfa,
+    const char *text
+){
+    assert(
+        dfa &&
+        dfa->type == DFA
+    );
+
+    State *curr_state = dfa->initial_state;
+
+    for(
+        int text_idx = 0;
+        text_idx < strlen(text);
+        text_idx++
+    ){
+        int valid_transition = 0;
+
+        if (
+            !curr_state->transitions
+        ) return 0;
+
+        for (
+            int transition_idx = 0;
+            transition_idx < vector_get_size(
+                curr_state->transitions
+            );
+            transition_idx++
+        ) {
+            Transition *curr_transition = vector_get(
+                curr_state->transitions,
+                transition_idx
+            );
+
+            if (
+                curr_transition->symbol.ch != text[text_idx]
+            ) continue;
+
+            valid_transition = 1;
+            curr_state = curr_transition->dest;
+
+            break;
+        }
+
+        if (
+            !valid_transition
+        ) return 0;
+
+    }
+
+    return curr_state->is_final;
+}
+
 FSM yar_dfa_construct(
     const char  *pattern, 
     uint8_t     *err
@@ -10,7 +63,12 @@ FSM yar_dfa_construct(
         err
     );
 
-    Vector *dfa_states = vector_construct(
+    if (
+        *err 
+    ) return (FSM){0};
+    
+
+    Vector *dfa_sunions = vector_construct(
         sizeof(SUnion*)
     );
 
@@ -20,12 +78,17 @@ FSM yar_dfa_construct(
     );
 
     vector_append(
-        &dfa_states,
+        &dfa_sunions,
         &initial_state
     );
 
     initial_state->states = vector_construct(
         sizeof(State*)
+    );
+
+    vector_append(
+        &initial_state->states,
+        &nfa.fsm_fragment->initial_state
     );
 
     empty_transitions_closure(
@@ -62,15 +125,15 @@ FSM yar_dfa_construct(
         );
         
         for(
-            int state_idx = 0;
-            state_idx < vector_get_size(
+            int sunion_idx = 0;
+            sunion_idx < vector_get_size(
                 initial_state->states
             );
-            state_idx++
+            sunion_idx++
         ){
             State **curr_s = vector_get(
                 initial_state->states,
-                state_idx
+                sunion_idx
             );
 
             symbol_transitions_closure(
@@ -94,11 +157,11 @@ FSM yar_dfa_construct(
             continue;
         }
 
-        nfa_to_dfa(
+        dfa_recursive_conversion(
             initial_state,
             &transition,
             nfa.alphabet,
-            dfa_states
+            dfa_sunions
         );
 
         if (
@@ -108,7 +171,7 @@ FSM yar_dfa_construct(
             )
         ) {
             vector_append(
-                &dfa_states,
+                &dfa_sunions,
                 &transition.dest
             );
         }
@@ -119,20 +182,187 @@ FSM yar_dfa_construct(
         );
     }   
 
-    printf("Estados: %d\n", vector_get_size(dfa_states));
+    set_dfa_final_states(
+        nfa.fsm_fragment->final_state,
+        dfa_sunions
+    );
+
+    Vector *dfa_states = vector_construct(
+        sizeof(State*)
+    );
+
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            dfa_sunions
+        );
+        idx ++
+    ) {
+        State *curr = calloc(
+            1,
+            sizeof(State)
+        );
+
+        vector_append(
+            &dfa_states,
+            &curr
+        );
+    }
+
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            dfa_sunions
+        );
+        idx ++
+    ) {
+
+        State **curr_state = vector_get(
+            dfa_states,
+            idx
+        );
+
+        SUnion **curr_sunion = vector_get(
+            dfa_sunions,
+            idx
+        );
+
+        (*curr_state)->is_final = (*curr_sunion)->is_final;
+
+        if (
+            !vector_get_size(
+                (*curr_sunion)->transitions
+            )
+        ) continue;
+
+        Transition curr_transition = {
+            .is_empty = 0
+        };
+
+        (*curr_state)->transitions = vector_construct(
+            sizeof(Transition)
+        );
+
+        for(
+            int sutransition_idx = 0;
+            sutransition_idx < vector_get_size(
+                (*curr_sunion)->transitions
+            );
+            sutransition_idx ++
+        ){
+            SUTransition *curr_sutranstion = vector_get(
+                (*curr_sunion)->transitions,
+                sutransition_idx
+            );
+
+            curr_transition.symbol = curr_sutranstion->symbol;
+
+            curr_transition.dest = *((State**)vector_get(
+                dfa_states,
+                vector_find(
+                    dfa_sunions,
+                    &curr_sutranstion->dest,
+                    sizeof(SUnion*)
+                )
+            ));
+
+            vector_append(
+                &(*curr_state)->transitions,
+                &curr_transition
+            );
+
+        }
+        
+    }
+
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            dfa_sunions
+        );
+        idx++
+    ){
+        SUnion **curr = vector_get(
+            dfa_sunions,
+            idx
+        );
+
+        sunion_destroy(
+            *curr
+        );
+    }
+
+    vector_destroy(
+        dfa_sunions
+    );
+
+    yar_nfa_destroy(
+        &nfa
+    );
+
+    return (FSM) {
+        .type = DFA,
+        .initial_state = *((State**)vector_get(
+            dfa_states,
+            0
+        )),
+        .states = dfa_states,
+    };
 }
 
 void yar_dfa_destroy(
     FSM *dfa
-);
+){
+    assert(
+        dfa                 &&
+        dfa->type == DFA    &&
+        dfa->initial_state
+    );
 
-static SUnion sunion_construct(
-    Vector *states
-);
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            dfa->states
+        );
+        idx ++
+    ){
+        State **curr = vector_get(
+            dfa->states,
+            idx
+        );
+
+        vector_destroy(
+            (*curr)->transitions
+        );
+
+        free(
+            *curr
+        );
+
+    }
+}
+
 
 static SUnion sunion_destroy(
     SUnion *sunion
-);
+){
+    assert(
+        sunion          &&
+        sunion->states
+    );
+
+    vector_destroy(
+        sunion->states
+    );
+
+    if (
+        sunion->transitions
+    ) {  
+        vector_destroy(
+            sunion->transitions
+        );
+    }
+}
 
 static int sunion_compare(
     SUnion *su1, 
@@ -177,7 +407,7 @@ static int sunion_compare(
     return 1;
 }
 
-static void nfa_to_dfa(
+static void dfa_recursive_conversion(
     SUnion          *curr,
     SUTransition    *curr_transition, 
     Vector          *alphabet, 
@@ -282,7 +512,7 @@ static void nfa_to_dfa(
             continue;
         }
 
-        nfa_to_dfa(
+        dfa_recursive_conversion(
             curr_transition->dest,
             &transition,
             alphabet,
@@ -387,10 +617,8 @@ static void symbol_transitions_closure(
         );
 
         if (
-            (
-                curr_t->symbol.ch != symbol.ch
-            ) ||
-            !curr_t->dest
+            curr_t->is_empty                    ||
+            curr_t->symbol.ch != symbol.ch      
         ) continue;
 
         if (
@@ -405,16 +633,41 @@ static void symbol_transitions_closure(
             &states,
             &curr_t->dest
         );
-
-        symbol_transitions_closure(
-            symbol,
-            curr_t->dest,
-            states
-        );
     }
 }
 
 static void set_dfa_final_states(
     const State *nfa_final_state, 
-    Vector      *nfa_states
-);
+    Vector      *dfa_sunions
+){
+    assert(
+        nfa_final_state             &&
+        dfa_sunions                 &&
+        vector_get_data_type_size(
+            dfa_sunions
+        ) == sizeof(SUnion*)
+    );
+
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            dfa_sunions
+        );
+        idx++
+    ){
+        SUnion **curr = vector_get(
+            dfa_sunions,
+            idx
+        );
+
+        if (
+            vector_find(
+                (*curr)->states,
+                &nfa_final_state,
+                sizeof(State*)
+            ) < 0
+        ) continue;
+
+        (*curr)->is_final = 1;
+    }
+}

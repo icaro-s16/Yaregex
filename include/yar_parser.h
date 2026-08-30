@@ -28,8 +28,6 @@ static AstNode* clone_ast(AstNode* root);
 
 static Parser parser_construct(Vector *tokens);
 
-static void parser_destroy(Parser *parser); 
-
 static AstNode* ast_node_construct(Token op, AstNode *left, AstNode *right);
 
 static AstNode* ast_node_construct_leaf(Token op);
