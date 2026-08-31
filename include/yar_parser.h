@@ -24,7 +24,7 @@ AstNode* yar_ast_construct(Vector *tokens, uint8_t *err);
 
 void yar_ast_destroy(AstNode *root);
 
-static AstNode* clone_ast(AstNode* root);
+static AstNode* clone_ast(AstNode* root, uint8_t *err);
 
 static Parser parser_construct(Vector *tokens);
 

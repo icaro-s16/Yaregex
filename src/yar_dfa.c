@@ -79,7 +79,8 @@ FSM yar_dfa_construct(
 
     vector_append(
         &dfa_sunions,
-        &initial_state
+        &initial_state,
+        sizeof(SUnion*)
     );
 
     initial_state->states = vector_construct(
@@ -88,7 +89,8 @@ FSM yar_dfa_construct(
 
     vector_append(
         &initial_state->states,
-        &nfa.fsm_fragment->initial_state
+        &nfa.fsm_fragment->initial_state,
+        sizeof(State*)
     );
 
     empty_transitions_closure(
@@ -164,21 +166,10 @@ FSM yar_dfa_construct(
             dfa_sunions
         );
 
-        if (
-            !sunion_compare(
-                initial_state,
-                transition.dest
-            )
-        ) {
-            vector_append(
-                &dfa_sunions,
-                &transition.dest
-            );
-        }
-
         vector_append(
             &initial_state->transitions,
-            &transition
+            &transition,
+            sizeof(Transition)
         );
     }   
 
@@ -205,7 +196,8 @@ FSM yar_dfa_construct(
 
         vector_append(
             &dfa_states,
-            &curr
+            &curr,
+            sizeof(State*)
         );
     }
 
@@ -268,7 +260,8 @@ FSM yar_dfa_construct(
 
             vector_append(
                 &(*curr_state)->transitions,
-                &curr_transition
+                &curr_transition,
+                sizeof(Transition)
             );
 
         }
@@ -301,12 +294,12 @@ FSM yar_dfa_construct(
     );
 
     return (FSM) {
-        .type = DFA,
-        .initial_state = *((State**)vector_get(
+        .type           = DFA,
+        .initial_state  = *((State**)vector_get(
             dfa_states,
             0
         )),
-        .states = dfa_states,
+        .states         = dfa_states,
     };
 }
 
@@ -411,11 +404,11 @@ static void dfa_recursive_conversion(
     SUnion          *curr,
     SUTransition    *curr_transition, 
     Vector          *alphabet, 
-    Vector          *states
+    Vector          *sunions
 ){
     assert(
         alphabet        &&
-        states    
+        sunions    
     );
 
     for(
@@ -435,11 +428,33 @@ static void dfa_recursive_conversion(
         );
     }
 
+    int is_self_loop = 0;
+    SUnion **loop_state = NULL;
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            sunions
+        );
+        idx++
+    ){
+        loop_state = vector_get(
+            sunions,
+            idx
+        );
+
+        if (
+            sunion_compare(
+                *loop_state,
+                curr_transition->dest
+            )
+        ) {
+            is_self_loop = 1;
+            break;
+        }
+    }
+
     if (
-        sunion_compare(
-            curr,
-            curr_transition->dest
-        )
+        is_self_loop
     ) {
         vector_destroy(
             curr_transition->dest->states
@@ -447,8 +462,15 @@ static void dfa_recursive_conversion(
         free(
             curr_transition->dest
         );
-        curr_transition->dest = curr;
+        curr_transition->dest = *loop_state;
         return;
+    }
+    else{
+        vector_append(
+            &sunions,
+            &curr_transition->dest,
+            sizeof(SUnion*)
+        );
     }
 
     curr_transition->dest->transitions = vector_construct(
@@ -516,24 +538,13 @@ static void dfa_recursive_conversion(
             curr_transition->dest,
             &transition,
             alphabet,
-            states
+            sunions
         );
-
-        if (
-            !sunion_compare(
-                curr_transition->dest,
-                transition.dest
-            )
-        ) {
-            vector_append(
-                &states,
-                &transition.dest
-            );
-        }
 
         vector_append(
             &curr_transition->dest->transitions,
-            &transition
+            &transition,
+            sizeof(Transition)
         );
     }
 }
@@ -579,7 +590,8 @@ static void empty_transitions_closure(
 
         vector_append(
             &states,
-            &curr_t->dest
+            &curr_t->dest,
+            sizeof(State*)
         );
 
         empty_transitions_closure(
@@ -631,7 +643,8 @@ static void symbol_transitions_closure(
 
         vector_append(
             &states,
-            &curr_t->dest
+            &curr_t->dest,
+            sizeof(State*)
         );
     }
 }

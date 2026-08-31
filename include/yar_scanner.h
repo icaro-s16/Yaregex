@@ -7,8 +7,6 @@
 #define CHAR_TOKENS(X)          \
     X(OPEN_PARENTHESES, '(')    \
     X(CLOSE_PARENTHESES, ')')   \
-    X(CIRCUMFLEX, '^')          \
-    X(DOLAR, '$')               \
     X(PLUS, '+')                \
     X(QMARK, '?')               \
     X(STAR, '*')                \

@@ -142,6 +142,13 @@ Vector* yar_scan(
         pattern
     );
 
+    if (
+        scanner.state
+    ) {
+        *err = scanner.state;
+        return NULL;
+    }
+
     uint8_t tape_state;
     do {
         tape_state = scanner_consume(
@@ -162,8 +169,10 @@ Vector* yar_scan(
     if (
         scanner.state 
     ) {
-        vector_destroy(
-            scanner.tokens
+        assert(
+            !vector_destroy(
+                scanner.tokens
+            )
         );
 
         *err = scanner.state;
@@ -220,10 +229,13 @@ static Scanner scanner_construct(
         )
     };
 
-    assert(
-        scanner.tape && 
-        scanner.tokens
-    );
+    if (
+        !scanner.tokens || 
+        !scanner.tape
+    ) {
+        scanner.state |= YAR_INVALID_ALLOC;
+        return scanner;
+    }
 
     strcpy(
         scanner.tape, 
@@ -258,14 +270,15 @@ static int scanner_consume(
     );
     
     if (
-        scanner->index > scanner->tape_size
-    ){
-        return SCANNER_EMPTY_TAPE;
-    }
+        scanner->index > scanner->tape_size ||
+        scanner->state
+    ) return SCANNER_EMPTY_TAPE;
 
     char curr = scanner->tape[
         scanner->index
     ];
+
+    int err = 0;
 
     if (
         curr == '\0'
@@ -274,10 +287,22 @@ static int scanner_consume(
             .class      = EOT, 
             .ch         = '\0'
         };
-        vector_append(
+        err = vector_append(
             &scanner->tokens,
-            &token
+            &token,
+            sizeof(Token)
         );
+
+        assert(
+            !err ||
+            err == VEC_RESIZE_FAILED
+        );
+
+        if (
+            scanner->state
+        ) {
+            scanner->state |= YAR_INVALID_ALLOC;
+        }
         return SCANNER_EMPTY_TAPE;
     }
 
@@ -297,11 +322,23 @@ static int scanner_consume(
             );
         }
         else{
-            vector_append(
+            err = vector_append(
                 &scanner->tokens,
-                &token
+                &token,
+                sizeof(Token)
             );
+            
+            assert(
+                !err ||
+                err == VEC_RESIZE_FAILED
+            );
+
+            if (
+                err 
+            ) scanner->state |= YAR_INVALID_ALLOC;
+                
         }
+
         break;
     }
     case '[':{
@@ -317,10 +354,20 @@ static int scanner_consume(
             );
         }
         else{
-            vector_append(
+            err = vector_append(
                 &scanner->tokens,
-                &token
+                &token,
+                sizeof(Token)
             );
+
+            assert(
+                !err ||
+                err == VEC_RESIZE_FAILED
+            );
+
+            if (
+                err 
+            ) scanner->state |= YAR_INVALID_ALLOC;
         }
         break;
     }
@@ -337,10 +384,20 @@ static int scanner_consume(
             );
         }
         else{
-            vector_append(
+            err = vector_append(
                 &scanner->tokens,
-                &token
+                &token,
+                sizeof(Token)
             );
+
+            assert(
+                !err ||
+                err == VEC_RESIZE_FAILED
+            );
+
+            if (
+                err 
+            ) scanner->state |= YAR_INVALID_ALLOC;
         }
         
         break;
@@ -373,6 +430,8 @@ static void scanner_append_symbol(
         .class  = CONCAT
     };
 
+    int err = 0;
+
     /* 
      * Concatenation cases:
      * 
@@ -398,16 +457,42 @@ static void scanner_append_symbol(
             ) 
         )
     ){
-        vector_append(
+        err = vector_append(
             &scanner->tokens,
-            &concat
+            &concat,
+            sizeof(Token)
         );
     }
 
-    vector_append(
-        &scanner->tokens,
-        &symbol
+    assert(
+        !err ||
+        err == VEC_RESIZE_FAILED
     );
+
+    if (
+        err 
+    ) {
+        scanner->state |= YAR_INVALID_ALLOC;
+        return;
+    }
+
+    err = vector_append(
+        &scanner->tokens,
+        &symbol,
+        sizeof(Token)
+    );
+
+    assert(
+        !err || 
+        err == VEC_RESIZE_FAILED 
+    );
+
+    if (
+        err 
+    ) {
+        scanner->state |= VEC_RESIZE_FAILED;
+        return;
+    }
 
     scanner->last_token = vector_get(
         scanner->tokens,

@@ -49,12 +49,23 @@ Token ranged_char_handler(
     Vector *symbols = vector_construct(
         sizeof(Token)
     );
+
+    if (
+        !symbols
+    ){
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    }
+
     Token token = {
         .class = RANGED_CHAR
     };
+
     char curr = scanner->tape[
         scanner->index
     ];
+
+    int err = 0;
 
     if (
         curr != '['
@@ -63,18 +74,29 @@ Token ranged_char_handler(
         if (
             curr == '\0'
         ) symbol.class = EOT;
-        
-        vector_destroy(
-            symbols
+        assert(
+            !vector_destroy(
+                symbols
+            )
         );
         return symbol;
     }
 
     symbol.ch = curr;
-    handler_append_symbol(
+    err = handler_append_symbol(
         &symbols,
         symbol
     );
+
+    if (
+        err 
+    ) {
+        vector_destroy(
+            symbols
+        );
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    }
 
     curr = scanner->tape[
         ++scanner->index
@@ -91,10 +113,20 @@ Token ranged_char_handler(
     }
 
     symbol.ch = curr;
-    handler_append_symbol(
+    err = handler_append_symbol(
         &symbols,
         symbol
     );
+
+    if (
+        err 
+    ) {
+        vector_destroy(
+            symbols
+        );
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    }
 
     token.start = (int)curr;
     curr = scanner->tape[
@@ -111,10 +143,22 @@ Token ranged_char_handler(
     }
 
     symbol.ch = curr;
-    handler_append_symbol(
+    err = handler_append_symbol(
         &symbols,
         symbol
     );
+
+    if (
+        err 
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    }
 
     curr = scanner->tape[
         ++scanner->index
@@ -131,10 +175,22 @@ Token ranged_char_handler(
     }
 
     symbol.ch = curr;
-    handler_append_symbol(
+    err = handler_append_symbol(
         &symbols,
         symbol
     );
+
+    if (
+        err 
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        return (Token){0};
+    }
+
     token.end = (int)curr;
     curr = scanner->tape[
         ++scanner->index
@@ -149,8 +205,10 @@ Token ranged_char_handler(
             curr
         );
     }
-    vector_destroy(
-        symbols
+    assert(
+        !vector_destroy(
+            symbols
+        )
     );
 
     scanner->state |= (
@@ -174,9 +232,19 @@ Token quantifier_handler(
     Vector *symbols = vector_construct(
         sizeof(Token)
     );
+
+    if (
+        !symbols
+    ) {
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    }
+    
     Token symbol = {
         .class  = SYMBOL
     };
+
+    int err = 0;
 
     char curr = scanner->tape[
         scanner->index
@@ -185,8 +253,10 @@ Token quantifier_handler(
         curr != '{'
     ) {
         symbol.ch = curr;
-        vector_destroy(
-            symbols
+        assert(
+            !vector_destroy(
+                symbols
+            )
         );
         symbol.ch = curr;
         if (
@@ -197,10 +267,22 @@ Token quantifier_handler(
     }
     
     symbol.ch = curr; 
-    handler_append_symbol(
+    err = handler_append_symbol(
         &symbols,
         symbol
     );
+
+    if (
+        err 
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        scanner->state |= err;
+        return (Token){0};
+    }
 
     curr = scanner->tape[
         ++scanner->index
@@ -219,6 +301,18 @@ Token quantifier_handler(
         scanner,
         &symbols
     );
+
+    if (
+        scanner->state
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        return (Token){0};
+    }
+
     token.start = str_to_uint(
         scanner
     );
@@ -228,8 +322,10 @@ Token quantifier_handler(
     if (
         curr == '}'
     ){
-        vector_destroy(
-            symbols
+        assert(
+            !vector_destroy(
+                symbols
+            )
         );
 
         scanner->state |= (
@@ -252,18 +348,33 @@ Token quantifier_handler(
     }
     
     symbol.ch = curr; 
-    handler_append_symbol(
+    err = handler_append_symbol(
         &symbols,
         symbol
     );
+
+    if (
+        err 
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        scanner->state |= err;
+        return (Token){0};
+    }
+
     curr = scanner->tape[
         ++scanner->index
     ];
     if (
         curr == '}'
     ){  
-        vector_destroy(
-            symbols
+        assert(
+            !vector_destroy(
+                symbols
+            )
         );
 
         scanner->state |= (
@@ -289,6 +400,18 @@ Token quantifier_handler(
         scanner,
         &symbols
     );
+
+    if (
+        scanner->state
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        return (Token){0};
+    }
+
     token.end = str_to_uint(
         scanner
     );
@@ -304,8 +427,10 @@ Token quantifier_handler(
             curr
         );
     }
-    vector_destroy(
-        symbols
+    assert(
+        !vector_destroy(
+            symbols
+        )
     );
 
     scanner->state |= (
@@ -376,21 +501,49 @@ Token backslash_handler(
         Token concat = {
             .class  = CONCAT
         };
+        int err = 0;
         if (
             scanner->last_token &&
             is_terminal_token(*scanner->last_token)
         ){
-            vector_append(
+            err = vector_append(
                 &scanner->tokens,
-                &concat
+                &concat,
+                sizeof(Token)
             );
         }
 
+        assert(
+            !err ||
+            err == VEC_RESIZE_FAILED
+        );
+
+        if (
+            err == VEC_RESIZE_FAILED
+        ) {
+            scanner->state |= YAR_INVALID_ALLOC;
+            return (Token){0};
+        }
+
         symbol.ch = '\\';
-        vector_append(
+        err = vector_append(
             &scanner->tokens,
-            &symbol
-        );    
+            &symbol,
+            sizeof(Token)
+        );
+        
+        assert(
+            !err ||
+            err == VEC_RESIZE_FAILED
+        );
+
+        if (
+            err
+        ) {
+            scanner->state |= YAR_INVALID_ALLOC;
+            return (Token){0};
+        }
+        
         symbol.ch = curr;
         if (
             curr == '\0'
@@ -425,11 +578,13 @@ static uint str_to_uint(
 }
 
 static void append_number_symbols(
-    const Scanner *scanner,
+    Scanner *scanner,
     Vector **symbols
 ){
     uint initial_idx = scanner->index;
 
+    int err = 0;
+     
     for(
         char curr = scanner->tape[
             initial_idx
@@ -441,10 +596,17 @@ static void append_number_symbols(
             .ch     = curr
         };
 
-        handler_append_symbol(
+        err = handler_append_symbol(
             symbols,
             symbol
         );
+
+        if (
+            err 
+        ) {
+            scanner->state |= YAR_INVALID_ALLOC;
+            return;
+        }
 
         curr = scanner->tape[
             ++initial_idx
@@ -453,7 +615,7 @@ static void append_number_symbols(
 
 }
 
-static void handler_append_symbol(
+static int handler_append_symbol(
     Vector **tokens, 
     Token symbol
 ){
@@ -461,19 +623,43 @@ static void handler_append_symbol(
         .class  = CONCAT
     };
 
+    int err = 0;
+
     if (
         vector_get_size(
             *tokens
         ) 
-    ) vector_append(
+    ) err = vector_append(
         tokens,
-        &concat
+        &concat,
+        sizeof(Token)
     );
 
-    vector_append(
-        tokens,
-        &symbol
+    assert(
+        !err || 
+        err == VEC_RESIZE_FAILED
     );
+
+    if (
+        err == VEC_RESIZE_FAILED
+    ) return YAR_INVALID_ALLOC;
+
+    err = vector_append(
+        tokens,
+        &symbol,
+        sizeof(Token)
+    );
+
+    assert(
+        !err || 
+        err == VEC_RESIZE_FAILED
+    );
+
+    if (
+        err == VEC_RESIZE_FAILED
+    ) return YAR_INVALID_ALLOC;
+
+    return 0;
 }
 
 static Token handle_invalid_operation_syntax(
@@ -486,7 +672,10 @@ static Token handle_invalid_operation_syntax(
     };
     Token concat = {                                            
         .class  = CONCAT                                     
-    };                                                          
+    };
+    
+    int err = 0;
+    
     if (                                                        
         scanner->last_token &&                                  
         (                                                       
@@ -495,15 +684,52 @@ static Token handle_invalid_operation_syntax(
             is_quantifier_token(*scanner->last_token)           
         )                                                       
     ){                                                          
-        vector_append(                                          
+        err = vector_append(                                          
             &scanner->tokens,                                   
-            &concat                                             
+            &concat,
+            sizeof(Token)                                             
         );                                                      
-    }                                                           
-    vector_concat(                                              
+    }         
+    
+    assert(
+        !err ||
+        err == VEC_RESIZE_FAILED 
+    );
+
+    if (
+        err
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    }
+
+    err = vector_concat(                                              
         &scanner->tokens,                                       
         symbols                                                 
-    );                                                          
+    );    
+
+    assert(
+        !err || 
+        err == VEC_RESIZE_FAILED
+    );
+
+    if (
+        err
+    ) {
+        assert(
+            !vector_destroy(
+                symbols
+            )
+        );
+        scanner->state |= YAR_INVALID_ALLOC;
+        return (Token){0};
+    };
+
     if (                                                        
         vector_get_size(scanner->tokens) > 0                    
     ){                                                          
@@ -511,9 +737,11 @@ static Token handle_invalid_operation_syntax(
             scanner->tokens,                                    
             vector_get_size(scanner->tokens) - 1                
         );                                                      
-    }                                                           
-    vector_destroy(                                             
-        symbols                                                 
+    }
+    assert(                                                           
+        !vector_destroy(                                             
+            symbols                                                 
+        )
     );                                                          
     symbol.ch = curr;                                           
     if (                                                        

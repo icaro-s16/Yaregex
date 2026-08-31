@@ -32,5 +32,10 @@ enum {
      * in which the start char is greater or 
      * equal than the end char. 
      */
-    SCANNER_INVALID_RANGED_CHAR        = 1<<5
+    SCANNER_INVALID_RANGED_CHAR        = 1<<5,
+    /* 
+     * NOTE: If an allocation can not be 
+     * created.
+     */
+    YAR_INVALID_ALLOC                      = 1<<6 
 };

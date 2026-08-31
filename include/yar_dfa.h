@@ -23,7 +23,7 @@ static SUnion sunion_destroy(SUnion *sunion);
 
 static int sunion_compare(SUnion *su1, SUnion *su2);
 
-static void dfa_recursive_conversion(SUnion *curr, SUTransition *curr_transition, Vector *alphabet, Vector *states);
+static void dfa_recursive_conversion(SUnion *curr, SUTransition *curr_transition, Vector *alphabet, Vector *sunions);
 
 static void empty_transitions_closure(State *curr, Vector *states);
 

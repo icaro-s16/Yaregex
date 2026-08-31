@@ -51,16 +51,16 @@ void yar_nfa_destroy(FSM *fsm);
 
 static Vector* get_alphabet(Vector *tokens);
 
-static FsmFragment* fsm_fragment_construct(AstNode *root, Vector *states);
+static FsmFragment* fsm_fragment_construct(AstNode *root, Vector *states, uint8_t *err);
 
-static FsmFragment* terminal_fsm_fragment(Token symbol, Vector *states);
+static FsmFragment* terminal_fsm_fragment(Token symbol, Vector *states, uint8_t *err);
 
-static FsmFragment* concat_fsm_fragment(FsmFragment *left, FsmFragment *right, Vector *states);
+static FsmFragment* concat_fsm_fragment(FsmFragment *left, FsmFragment *right, Vector *states, uint8_t *err);
 
-static FsmFragment* pipe_fsm_fragment(FsmFragment *left, FsmFragment *right, Vector *states);
+static FsmFragment* pipe_fsm_fragment(FsmFragment *left, FsmFragment *right, Vector *states, uint8_t *err);
 
-static FsmFragment* qmark_fsm_fragment(FsmFragment *left, Vector *states);
+static FsmFragment* qmark_fsm_fragment(FsmFragment *left, Vector *states, uint8_t *err);
 
-static FsmFragment* star_fsm_fragment(FsmFragment *left, Vector *states);
+static FsmFragment* star_fsm_fragment(FsmFragment *left, Vector *states, uint8_t *err);
 
-static FsmFragment* plus_fsm_fragment(FsmFragment *left, Vector *states);
+static FsmFragment* plus_fsm_fragment(FsmFragment *left, Vector *states, uint8_t *err);

@@ -19,9 +19,16 @@ void yar_print_ast(
         sizeof(AstNode)
     );
 
-    vector_append(
-        &queue,
-        root
+    assert(
+        queue
+    );
+
+    assert(
+        !vector_append(
+            &queue,
+            root,
+            sizeof(AstNode)
+        )
     );
 
     int level_size = 1;
@@ -38,9 +45,11 @@ void yar_print_ast(
 
         level_size -= 1;
 
-        vector_remove(
-            &queue,
-            0
+        assert(
+            !vector_remove(
+                &queue,
+                0
+            )
         );
 
         int counter = 0;
@@ -63,18 +72,24 @@ void yar_print_ast(
         if (
             curr.left
         ) {
-            vector_append(
-                &queue, 
-                curr.left
+            assert(
+                !vector_append(
+                    &queue, 
+                    curr.left,
+                    sizeof(AstNode)
+                )
             );
         }
 
         if (
             curr.right
         ) {
-            vector_append(
-                &queue, 
-                curr.right
+            assert(
+                !vector_append(
+                    &queue, 
+                    curr.right,
+                    sizeof(AstNode)
+                )
             );
         }
 
@@ -87,8 +102,10 @@ void yar_print_ast(
         }
         
     }
-    vector_destroy(
-        queue
+    assert(
+        !vector_destroy(
+            queue
+        )
     );
 }
 
@@ -136,7 +153,7 @@ AstNode* yar_ast_construct(
                 root
             );
         }
-        *err = parser.state;
+        *err |= parser.state;
         root = NULL;
     }
 
@@ -171,7 +188,8 @@ void yar_ast_destroy(
 }
 
 static AstNode* clone_ast(
-    AstNode* root
+    AstNode*    root,
+    uint8_t     *err
 ){
     if (
         !root
@@ -182,18 +200,27 @@ static AstNode* clone_ast(
         sizeof(AstNode)
     );
 
+    if (
+        !copy
+    ) {
+        *err |= YAR_INVALID_ALLOC;
+        return NULL;
+    }
+
     copy->op = root->op;
 
     if (
         root->left
     ) copy->left = clone_ast(
-        root->left
+        root->left,
+        err 
     );
 
     if (
         root->right 
     ) copy->right = clone_ast(
-        root->right
+        root->right,
+        err
     );
 
     return copy;    
@@ -226,9 +253,9 @@ static AstNode* ast_node_construct(
         sizeof(AstNode)
     );
 
-    assert(
-        node
-    );
+    if (
+        !node 
+    ) return NULL;
 
     node->op = op;
     node->left = left;
@@ -292,11 +319,38 @@ static AstNode* alternation_expr(
             !right 
         ) parser->state |= PARSER_INVALID_ALTERNATION;
         
-        left = ast_node_construct(
+        AstNode *new_left = ast_node_construct(
             curr,
-            left,
+            left, 
             right
         );
+
+        if (
+            !new_left
+        ) {
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+
+            if (
+                left 
+            ) {
+                yar_ast_destroy(
+                    left
+                );
+            }
+
+            parser->state |= YAR_INVALID_ALLOC;
+
+            return NULL;
+        }
+
+        left = new_left;
+
 
         curr = *((Token*)vector_get(
             parser->tokens,
@@ -337,16 +391,43 @@ static AstNode* concatenation_expr(
             parser
         );
 
-        left = ast_node_construct(
+        AstNode *new_left = ast_node_construct(
             curr,
             left, 
             right
         );
 
+        if (
+            !new_left
+        ) {
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+
+            if (
+                left 
+            ) {
+                yar_ast_destroy(
+                    left
+                );
+            }
+
+            parser->state |= YAR_INVALID_ALLOC;
+
+            return NULL;
+        }
+
+        left = new_left;
+
         curr = *((Token*)vector_get(
             parser->tokens,
             parser->index
         ));
+
     }
 
     return left;
@@ -360,13 +441,29 @@ static AstNode* translate_quantifier_exact(
         .class  = CONCAT
     };
     
+    uint8_t err = 0;
+
     if (
         curr.start <= 1
     )return left;
     
-    AstNode *new_left = clone_ast(
-        left
+    AstNode *copy_node = clone_ast(
+        left,
+        &err 
     );
+
+    if (
+        err 
+    ) {
+        if (
+            copy_node
+        ) {
+            yar_ast_destroy(
+                copy_node
+            );
+        }
+        return NULL;
+    }
 
     for(
         int idx = 0;
@@ -374,18 +471,61 @@ static AstNode* translate_quantifier_exact(
         idx ++
     ){
         AstNode *right = clone_ast(
-            new_left
+            copy_node,
+            &err 
         );
 
-        left = ast_node_construct(
+        if (
+            err 
+        ) {
+            if (
+                copy_node
+            ) {
+                yar_ast_destroy(
+                    copy_node
+                );
+            }
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+            return NULL;
+        }
+
+        AstNode *new_left = ast_node_construct(
             concat,
             left,
             right
         );
 
+        if (
+            !new_left 
+        ) {
+            if (
+                copy_node
+            ) {
+                yar_ast_destroy(
+                    copy_node
+                );
+            }
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+            return NULL;
+        }
+        left = new_left;
+
     }
+
     yar_ast_destroy(
-        new_left
+        copy_node
     );
 
     return left;
@@ -395,20 +535,78 @@ static AstNode* translate_quantifier_min(
     AstNode *left,
     Token curr
 ){
+    
+    uint8_t err = 0;
+    AstNode *copy_node = clone_ast(
+        left,
+        &err 
+    );
+
+    if (
+        err 
+    ) {
+        if (
+            copy_node
+        ) {
+            yar_ast_destroy(
+                copy_node
+            );
+        }
+        return NULL;
+    }
+    
+    curr.start - 1;
     left = translate_quantifier_exact(
         left,
         curr
     );
 
-    Token star = {
-        .class  = STAR
+    if (
+        !left
+    ) return NULL; 
+    
+    Token concat = {
+        .class = CONCAT
     };
 
-    left = ast_node_construct(
+    Token star = {
+        .class = STAR
+    };
+
+    AstNode *new_right = ast_node_construct(
         star,
-        left,
+        copy_node,
         NULL
     );
+
+    if (
+        !new_right
+    ) {
+        yar_ast_destroy(
+            left
+        );
+        return NULL;
+    }
+
+    AstNode *new_left = ast_node_construct(
+        concat,
+        left,
+        new_right
+    );
+
+    if (
+        !new_left
+    ) {
+        yar_ast_destroy(
+            left
+        );
+        yar_ast_destroy(
+            new_right
+        );
+        return NULL;
+    }
+
+    left = new_left;
 
     return left;
 }
@@ -417,10 +615,26 @@ static AstNode* trasnlate_ranged_quantifier(
     AstNode *left,
     Token curr
 ){
-    AstNode *new_left = clone_ast(
-        left
+    uint8_t err = 0;
+
+    AstNode *copy_node = clone_ast(
+        left,
+        &err 
     );
     
+    if (
+        err 
+    ) {
+        if ( 
+            copy_node
+        ) {
+            yar_ast_destroy(
+                copy_node
+            );
+        }
+        return NULL;
+    }
+
     Token concat = {
         .class  = CONCAT
     };
@@ -438,14 +652,70 @@ static AstNode* trasnlate_ranged_quantifier(
             idx ++
         ){
             AstNode *right = clone_ast(
-                new_left
+                copy_node,
+                &err
             );
-
-            left = ast_node_construct(
+            if (
+                err 
+            ) {
+                if ( 
+                    copy_node
+                ) {
+                    yar_ast_destroy(
+                        copy_node
+                    );
+                }
+                if (
+                    right
+                ) {
+                    yar_ast_destroy(
+                        right
+                    );
+                }
+                if (
+                    left 
+                ) {
+                    yar_ast_destroy(
+                        left
+                    );
+                }
+                return NULL;
+            }
+            
+            AstNode *new_left = ast_node_construct(
                 concat,
                 left,
                 right
             );
+
+            if (
+                !new_left
+            ) {
+                if (
+                    right
+                ) {
+                    yar_ast_destroy(
+                        right
+                    );
+                }
+                if (
+                    left
+                ) {
+                    yar_ast_destroy(
+                        left
+                    );
+                }
+                if (
+                    copy_node
+                ) {
+                    yar_ast_destroy(
+                        copy_node
+                    );
+                }
+                return NULL;
+            }
+
+            left = new_left;
 
         }
     }      
@@ -456,24 +726,110 @@ static AstNode* trasnlate_ranged_quantifier(
         idx++
     ){
         AstNode *right = clone_ast(
-            new_left
+            copy_node,
+            &err
         );
+        
+        if (
+            err 
+        ) {
+            if ( 
+                copy_node
+            ) {
+                yar_ast_destroy(
+                    copy_node
+                );
+            }
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+            if (
+                left
+            ) {
+                yar_ast_destroy(
+                    left
+                );
+            }
+            return NULL;
+        }
 
-        right = ast_node_construct(
+        AstNode* new_right = ast_node_construct(
             qmark,
             right,
             NULL
         );
 
-        left = ast_node_construct(
+        if (
+            err 
+        ) {
+            if ( 
+                copy_node
+            ) {
+                yar_ast_destroy(
+                    copy_node
+                );
+            }
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+            if (
+                left
+            ) {
+                yar_ast_destroy(
+                    left
+                );
+            }
+            return NULL;
+        }
+
+        right = new_right;
+
+        AstNode *new_left = ast_node_construct(
             concat,
             left,
             right
         );
+
+        if (
+            err 
+        ) {
+            if ( 
+                copy_node
+            ) {
+                yar_ast_destroy(
+                    copy_node
+                );
+            }
+            if (
+                right
+            ) {
+                yar_ast_destroy(
+                    right
+                );
+            }
+            if (
+                left
+            ) {
+                yar_ast_destroy(
+                    left
+                );
+            }
+            return NULL;
+        }
+
+        left = new_left;
     }
 
     yar_ast_destroy(
-        new_left
+        copy_node
     );
 
     return left;
@@ -552,6 +908,13 @@ static AstNode* quantifier_expr(
             break;
         }
 
+        if (
+            !left
+        ) {
+            parser->state |= YAR_INVALID_ALLOC;
+            return NULL;
+        }
+
         curr = *((Token*)vector_get(
             parser->tokens,
             parser->index
@@ -571,6 +934,8 @@ static AstNode* grouping_expr(
 ){   
     AstNode *left = NULL, *right = NULL;
     Token curr;
+
+    int err = 0;
 
     left = terminal(
         parser
@@ -594,14 +959,54 @@ static AstNode* grouping_expr(
         sizeof(TokenClass)
     );
 
+    if (
+        !stack
+    ) {
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
+    }
+
     Vector *grouping_tokens = vector_construct(
         sizeof(Token)
     );
 
-    vector_append(
+    if (
+        !grouping_expr
+    ) {
+        assert(
+            !vector_destroy(
+                stack
+            )
+        );
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
+    }
+
+    err = vector_append(
         &stack,
-        &curr.class
+        &curr.class,
+        sizeof(TokenClass)
     );
+
+    assert(
+        !err ||
+        err == VEC_RESIZE_FAILED
+    );
+
+    if (
+        err 
+    ) {
+        assert(
+            !vector_destroy(
+                stack
+            ) &&
+            !vector_destroy(
+                grouping_tokens
+            )
+        );
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
+    }
 
     parser->index += 1;
 
@@ -621,41 +1026,92 @@ static AstNode* grouping_expr(
         if (
             curr.class == OPEN_PARENTHESES
         ){
-            vector_append(
+            err = vector_append(
                 &stack,
-                &curr.class
+                &curr.class,
+                sizeof(TokenClass)
             );
-            vector_append(
-                &grouping_tokens,
-                &curr.class
+
+            assert(
+                !err ||
+                err == VEC_RESIZE_FAILED
             );
+
+            if (
+                !err
+            ) {
+                err = vector_append(
+                    &grouping_tokens,
+                    &curr,
+                    sizeof(Token)
+                );
+
+                assert(
+                    !err ||
+                    err == VEC_RESIZE_FAILED
+                );
+            }
         }
         else if (
             curr.class == CLOSE_PARENTHESES
         ){
-            vector_remove(
+            err = vector_remove(
                 &stack,
                 vector_get_size(
                     stack
                 ) - 1
             );
 
+            assert(
+                !err ||
+                err == VEC_RESIZE_FAILED
+            );
+
             if (
                 vector_get_size(
                     stack
-                ) > 0
+                ) > 0 &&
+                !err 
             ) {
-                vector_append(
+                err = vector_append(
                     &grouping_tokens,
-                    &curr
+                    &curr,
+                    sizeof(Token)
+                );
+                
+                assert(
+                    !err ||
+                    err == VEC_RESIZE_FAILED
                 );
             }
 
-        }else {
-            vector_append(
+        }
+        else {
+            err = vector_append(
                 &grouping_tokens,
-                &curr
+                &curr,
+                sizeof(Token)
             );
+            assert(
+                !err ||
+                err == VEC_RESIZE_FAILED
+            );
+
+        }
+
+        if (
+            err 
+        ) {
+            assert(
+                !vector_destroy(
+                    stack
+                ) &&
+                !vector_destroy(
+                    grouping_tokens
+                )
+            );
+            parser->state |= YAR_INVALID_ALLOC;
+            return NULL;
         }
 
     }
@@ -668,11 +1124,13 @@ static AstNode* grouping_expr(
             grouping_tokens
         ) == 0
     ){
-        vector_destroy(
-            stack
-        );
-        vector_destroy(
-            grouping_tokens
+        assert(
+            !vector_destroy(
+                stack
+            ) &&
+            !vector_destroy(
+                grouping_tokens
+            )
         );
         
         parser->state |= PARSER_INVALID_GROUPING;
@@ -690,14 +1148,42 @@ static AstNode* grouping_expr(
         .class  = EOT
     };
 
-    vector_append(
+    err = vector_append(
         &grouping_tokens,
-        &eot_token
+        &eot_token,
+        sizeof(Token)
     );
+
+    assert(
+        !err ||
+        err == VEC_RESIZE_FAILED
+    );
+
+    if (
+        err 
+    ) {
+        assert(
+            !vector_destroy(
+                stack
+            ) &&
+            !vector_destroy(
+                grouping_tokens
+            )
+        );
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
+    }
 
     Parser grouping_parser = parser_construct(
         grouping_tokens
     );
+
+    if (
+        grouping_parser.state
+    ) {
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
+    }
 
     if (
         !(
@@ -709,11 +1195,13 @@ static AstNode* grouping_expr(
 
     parser->state |= grouping_parser.state;
 
-    vector_destroy(
-        stack
-    );
-    vector_destroy(
-        grouping_tokens
+    assert(
+        !vector_destroy(
+            stack
+        ) &&
+        !vector_destroy(
+            grouping_tokens
+        )
     );
 
     return left;
@@ -748,11 +1236,14 @@ static AstNode* terminal(
         )
     ) return NULL;
 
-    AstNode *node;
-
-    node = ast_node_construct_leaf(
+    AstNode *node = ast_node_construct_leaf(
         curr
     );
+
+    if (
+        !node 
+    ) parser->state |= YAR_INVALID_ALLOC;
+
     parser->index ++;
     return node;
 }

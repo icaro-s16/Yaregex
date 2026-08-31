@@ -74,13 +74,17 @@ int vector_find(
 
 int vector_append(
     Vector  **vector, 
-    void    *data
+    void    *data,
+    size_t  data_size
 ){
     if (
         !vector || !(*vector) ||
         !data
-    )
-        return VEC_INVALID_PARAM;
+    ) return VEC_INVALID_PARAM;
+
+    if (
+        (*vector)->data_type_size != data_size
+    ) return VEC_TYPE_MISMATCH; 
     
     (*vector)->size += 1;
     if ((*vector)->size >= (*vector)->capacity){ 
@@ -117,7 +121,8 @@ int vector_concat(
             dest_vector,
             vector_get(
                 src_vector, idx
-            )
+            ),
+            src_vector->data_type_size
         );
 
         if (
