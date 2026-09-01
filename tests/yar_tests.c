@@ -2,8 +2,8 @@
 #include "yar_dfa.h"
 
 int main(){
-    char *pattern = "a{2,5}";
-    char *text = "aaaaaa";
+    char *pattern = "(0|1|2|3|4|5|6|7|8|9)+(,(0|1|2|3|4|5|6|7|8|9)+)?";
+    char *text = "2,1203400";
     uint8_t err = 0;
     FSM dfa = yar_dfa_construct(
         pattern,

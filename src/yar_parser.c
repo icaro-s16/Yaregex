@@ -288,7 +288,7 @@ static AstNode* alternation_expr(
         parser->tokens
     );
     
-    AstNode *left = NULL, *right = NULL;
+    AstNode *left = NULL, *right = NULL, *new_left = NULL;
     Token curr;
 
     left = concatenation_expr(
@@ -319,7 +319,7 @@ static AstNode* alternation_expr(
             !right 
         ) parser->state |= PARSER_INVALID_ALTERNATION;
         
-        AstNode *new_left = ast_node_construct(
+        new_left = ast_node_construct(
             curr,
             left, 
             right
@@ -327,30 +327,9 @@ static AstNode* alternation_expr(
 
         if (
             !new_left
-        ) {
-            if (
-                right
-            ) {
-                yar_ast_destroy(
-                    right
-                );
-            }
-
-            if (
-                left 
-            ) {
-                yar_ast_destroy(
-                    left
-                );
-            }
-
-            parser->state |= YAR_INVALID_ALLOC;
-
-            return NULL;
-        }
+        ) goto invalid_alloc;
 
         left = new_left;
-
 
         curr = *((Token*)vector_get(
             parser->tokens,
@@ -360,13 +339,42 @@ static AstNode* alternation_expr(
     }
 
     return left;
+
+    invalid_alloc:
+
+        if (
+            new_left
+        ) {
+            yar_ast_destroy(
+                new_left
+            );
+        }
+
+        if (
+            right
+        ) {
+            yar_ast_destroy(
+                right
+            );
+        }
+
+        if (
+            left
+        ) {
+            yar_ast_destroy(
+                left
+            );
+        }
+
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
 }
 
 static AstNode* concatenation_expr(
     Parser *parser
 ){
 
-    AstNode *left = NULL, *right = NULL;
+    AstNode *left = NULL, *right = NULL, *new_left = NULL;
     Token curr;
 
     left = quantifier_expr(
@@ -385,13 +393,14 @@ static AstNode* concatenation_expr(
     while (
         curr.class == CONCAT 
     ){
+        right = new_left = NULL;
         parser->index += 1;
 
         right = quantifier_expr(
             parser
         );
 
-        AstNode *new_left = ast_node_construct(
+        new_left = ast_node_construct(
             curr,
             left, 
             right
@@ -399,27 +408,7 @@ static AstNode* concatenation_expr(
 
         if (
             !new_left
-        ) {
-            if (
-                right
-            ) {
-                yar_ast_destroy(
-                    right
-                );
-            }
-
-            if (
-                left 
-            ) {
-                yar_ast_destroy(
-                    left
-                );
-            }
-
-            parser->state |= YAR_INVALID_ALLOC;
-
-            return NULL;
-        }
+        ) goto invalid_alloc;
 
         left = new_left;
 
@@ -431,6 +420,35 @@ static AstNode* concatenation_expr(
     }
 
     return left;
+
+    invalid_alloc:
+
+        if (
+            new_left
+        ) {
+            yar_ast_destroy(
+                new_left
+            );
+        }
+
+        if (
+            right
+        ) {
+            yar_ast_destroy(
+                right
+            );
+        }
+
+        if (
+            left
+        ) {
+            yar_ast_destroy(
+                left
+            );
+        }
+
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
 }
 
 static AstNode* translate_quantifier_exact(
@@ -454,22 +472,15 @@ static AstNode* translate_quantifier_exact(
 
     if (
         err 
-    ) {
-        if (
-            copy_node
-        ) {
-            yar_ast_destroy(
-                copy_node
-            );
-        }
-        return NULL;
-    }
+    ) goto invalid_alloc;
 
     for(
         int idx = 0;
         idx < curr.start - 1;
         idx ++
     ){
+        right = new_left = NULL;
+
         right = clone_ast(
             copy_node,
             &err 
@@ -477,23 +488,7 @@ static AstNode* translate_quantifier_exact(
 
         if (
             err 
-        ) {
-            if (
-                copy_node
-            ) {
-                yar_ast_destroy(
-                    copy_node
-                );
-            }
-            if (
-                right
-            ) {
-                yar_ast_destroy(
-                    right
-                );
-            }
-            return NULL;
-        }
+        ) goto invalid_alloc;
 
         new_left = ast_node_construct(
             concat,
@@ -503,23 +498,8 @@ static AstNode* translate_quantifier_exact(
 
         if (
             !new_left 
-        ) {
-            if (
-                copy_node
-            ) {
-                yar_ast_destroy(
-                    copy_node
-                );
-            }
-            if (
-                right
-            ) {
-                yar_ast_destroy(
-                    right
-                );
-            }
-            return NULL;
-        }
+        ) goto invalid_alloc;
+
         left = new_left;
 
     }
@@ -529,6 +509,42 @@ static AstNode* translate_quantifier_exact(
     );
 
     return left;
+
+    invalid_alloc:
+
+        if (
+            copy_node
+        ) {
+            yar_ast_destroy(
+                copy_node
+            );
+        }
+
+        if (
+            new_left
+        ) {
+            yar_ast_destroy(
+                new_left
+            );
+        }
+
+        if (
+            right
+        ) {
+            yar_ast_destroy(
+                right
+            );
+        }
+
+        if (
+            left
+        ) {
+            yar_ast_destroy(
+                left
+            );
+        }
+
+        return NULL;
 }
 
 static AstNode* translate_quantifier_min(
@@ -1117,20 +1133,19 @@ static AstNode* terminal(
         )
     ) return NULL;
 
-    AstNode *node = ast_node_construct_leaf(
+    AstNode *node = NULL;
+
+    node = ast_node_construct_leaf(
         curr
     );
 
     if (
         !node 
-    ) goto invalid_alloc;
+    ) {
+        parser->state |= YAR_INVALID_ALLOC;
+        return NULL;
+    };
 
     parser->index ++;
     return node;
-
-    invalid_alloc:
-
-        parser->state |= YAR_INVALID_ALLOC;
-        
-        return NULL;
 }

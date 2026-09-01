@@ -19,14 +19,20 @@ FSM yar_dfa_construct(const char *pattern, uint8_t *err);
 
 void yar_dfa_destroy(FSM *dfa);
 
-static SUnion sunion_destroy(SUnion *sunion);
-
 static int sunion_compare(SUnion *su1, SUnion *su2);
 
-static void dfa_recursive_conversion(SUnion *curr, SUTransition *curr_transition, Vector *alphabet, Vector *sunions);
+static Vector* sunions_construct(FSM *nfa, uint8_t *err);
 
-static void empty_transitions_closure(State *curr, Vector *states);
+static void sunion_destroy(SUnion *sunion);
 
-static void symbol_transitions_closure(const Token symbol, State *curr, Vector *states);
+static void sunions_destroy(Vector *sunions);
 
-static void set_dfa_final_states(const State *nfa_final_state, Vector *nfa_states);
+static FSM sunions_to_dfa(Vector *sunions, uint8_t *err);
+
+static int dfa_recursive_conversion(SUnion *curr, SUTransition *curr_transition, Vector *alphabet, Vector *sunions);
+
+static int empty_transitions_closure(State *curr, Vector *sunions);
+
+static int symbol_transitions_closure(const Token symbol, State *curr, Vector *sunions);
+
+static void set_final_sunions(const State *nfa_final_state, Vector *sunions);

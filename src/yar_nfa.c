@@ -5,6 +5,11 @@ FSM yar_nfa_construct(
     const char  *pattern,
     uint8_t     *err
 ){
+    assert(
+        pattern &&
+        err
+    );
+
     FsmFragment *fsm_fragment = NULL;
 
     Vector *states = NULL;

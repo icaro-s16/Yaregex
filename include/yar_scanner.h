@@ -10,8 +10,7 @@
     X(PLUS, '+')                \
     X(QMARK, '?')               \
     X(STAR, '*')                \
-    X(PIPE, '|')                \
-    X(WILDCARD, '.')            
+    X(PIPE, '|')                
 
 #define STR_TOKENS(X)               \
     X(RANGED_CHAR, "[%c-%c]")       \
