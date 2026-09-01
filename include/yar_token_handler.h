@@ -12,8 +12,8 @@ Token backslash_handler(Scanner *scanner);
 
 static uint str_to_uint(Scanner* scanner);
 
-static void append_number_symbols(Scanner *scanner, Vector **symbols);
+static void append_number_symbols(Scanner *scanner, Vector *symbols);
 
-static int handler_append_symbol(Vector **tokens, Token symbol);
+static int handler_append_symbol(Vector *tokens, Token symbol);
 
 static Token handle_invalid_operation_syntax(Scanner *scanner, Vector *symbols, char curr);

@@ -84,7 +84,7 @@ Token ranged_char_handler(
 
     symbol.ch = curr;
     err = handler_append_symbol(
-        &symbols,
+        symbols,
         symbol
     );
 
@@ -114,7 +114,7 @@ Token ranged_char_handler(
 
     symbol.ch = curr;
     err = handler_append_symbol(
-        &symbols,
+        symbols,
         symbol
     );
 
@@ -144,7 +144,7 @@ Token ranged_char_handler(
 
     symbol.ch = curr;
     err = handler_append_symbol(
-        &symbols,
+        symbols,
         symbol
     );
 
@@ -176,7 +176,7 @@ Token ranged_char_handler(
 
     symbol.ch = curr;
     err = handler_append_symbol(
-        &symbols,
+        symbols,
         symbol
     );
 
@@ -268,7 +268,7 @@ Token quantifier_handler(
     
     symbol.ch = curr; 
     err = handler_append_symbol(
-        &symbols,
+        symbols,
         symbol
     );
 
@@ -299,7 +299,7 @@ Token quantifier_handler(
     }
     append_number_symbols(
         scanner,
-        &symbols
+        symbols
     );
 
     if (
@@ -349,7 +349,7 @@ Token quantifier_handler(
     
     symbol.ch = curr; 
     err = handler_append_symbol(
-        &symbols,
+        symbols,
         symbol
     );
 
@@ -398,7 +398,7 @@ Token quantifier_handler(
     
     append_number_symbols(
         scanner,
-        &symbols
+        symbols
     );
 
     if (
@@ -579,7 +579,7 @@ static uint str_to_uint(
 
 static void append_number_symbols(
     Scanner *scanner,
-    Vector **symbols
+    Vector *symbols
 ){
     uint initial_idx = scanner->index;
 
@@ -616,7 +616,7 @@ static void append_number_symbols(
 }
 
 static int handler_append_symbol(
-    Vector **tokens, 
+    Vector *tokens, 
     Token symbol
 ){
     Token concat = {
@@ -627,10 +627,10 @@ static int handler_append_symbol(
 
     if (
         vector_get_size(
-            *tokens
+            tokens
         ) 
     ) err = vector_append(
-        tokens,
+        &tokens,
         &concat,
         sizeof(Token)
     );
@@ -645,7 +645,7 @@ static int handler_append_symbol(
     ) return YAR_INVALID_ALLOC;
 
     err = vector_append(
-        tokens,
+        &tokens,
         &symbol,
         sizeof(Token)
     );
@@ -688,25 +688,25 @@ static Token handle_invalid_operation_syntax(
             &scanner->tokens,                                   
             &concat,
             sizeof(Token)                                             
-        );                                                      
-    }         
-    
-    assert(
-        !err ||
-        err == VEC_RESIZE_FAILED 
-    );
+        );            
 
-    if (
-        err
-    ) {
         assert(
-            !vector_destroy(
-                symbols
-            )
+            !err ||
+            err == VEC_RESIZE_FAILED 
         );
-        scanner->state |= YAR_INVALID_ALLOC;
-        return (Token){0};
-    }
+
+        if (
+            err
+        ) {
+            assert(
+                !vector_destroy(
+                    symbols
+                )
+            );
+            scanner->state |= YAR_INVALID_ALLOC;
+            return (Token){0};
+        }
+    }         
 
     err = vector_concat(                                              
         &scanner->tokens,                                       

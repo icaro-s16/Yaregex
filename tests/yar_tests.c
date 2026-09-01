@@ -2,8 +2,8 @@
 #include "yar_dfa.h"
 
 int main(){
-    char *pattern = "a{2,}";
-    char *text = "aaa";
+    char *pattern = "a{2,5}";
+    char *text = "aaaaaa";
     uint8_t err = 0;
     FSM dfa = yar_dfa_construct(
         pattern,
@@ -22,6 +22,9 @@ int main(){
                     text
                 )
             ) ? "True" : "False"
+        );
+        yar_dfa_destroy(
+            &dfa
         );
     }
     return 0;
