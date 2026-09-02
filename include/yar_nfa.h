@@ -47,7 +47,7 @@ typedef struct{
 
 FSM yar_nfa_construct(const char *pattern, uint8_t *err);
 
-void yar_nfa_destroy(FSM *fsm);
+void yar_nfa_destroy(FSM *nfa);
 
 static Vector* get_alphabet(Vector *tokens);
 
@@ -62,5 +62,3 @@ static FsmFragment* pipe_fsm_fragment(FsmFragment *left, FsmFragment *right, Vec
 static FsmFragment* qmark_fsm_fragment(FsmFragment *left, Vector *states, uint8_t *err);
 
 static FsmFragment* star_fsm_fragment(FsmFragment *left, Vector *states, uint8_t *err);
-
-static FsmFragment* plus_fsm_fragment(FsmFragment *left, Vector *states, uint8_t *err);

@@ -42,6 +42,8 @@ static AstNode* translate_quantifier_min(AstNode *left, Token curr);
 
 static AstNode* trasnlate_ranged_quantifier(AstNode *left, Token curr);
 
+static AstNode* translate_plus_quantifier(AstNode *left, Token curr);
+
 static AstNode* quantifier_expr(Parser *parser);
 
 static AstNode* grouping_expr(Parser *parser);

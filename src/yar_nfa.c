@@ -86,6 +86,7 @@ FSM yar_nfa_construct(
             .fsm_fragment   = fsm_fragment,
             .states         = states
         };
+
         yar_nfa_destroy(
             &nfa
         );
@@ -113,26 +114,36 @@ FSM yar_nfa_construct(
 }
 
 void yar_nfa_destroy(
-    FSM *fsm
+    FSM *nfa
 ){
     assert(
-        fsm                 &&
-        fsm->type == NFA 
+        nfa                 &&
+        nfa->type == NFA 
     );
 
     if (
-        fsm->states
+        nfa->alphabet
+    ) {
+        assert(
+            !vector_destroy(
+                nfa->alphabet
+            )
+        );
+    }
+
+    if (
+        nfa->states
     ) {
 
         for(
             int idx = 0;
             idx < vector_get_size(
-                fsm->states
+                nfa->states
             );
             idx ++
         ){
             State *curr = *((State**)vector_get(
-                fsm->states,
+                nfa->states,
                 idx
             ));
             
@@ -156,22 +167,22 @@ void yar_nfa_destroy(
         }
         assert(
             !vector_destroy(
-                fsm->states
+                nfa->states
             )
         );
     }
 
     if (
-        fsm->fsm_fragment
+        nfa->fsm_fragment
     ){
         free(
-            fsm->fsm_fragment
+            nfa->fsm_fragment
         );
     }
     
 
-    fsm->fsm_fragment = NULL;
-    fsm->states = NULL;
+    nfa->fsm_fragment = NULL;
+    nfa->states = NULL;
 }
 
 static Vector* get_alphabet(
@@ -345,16 +356,6 @@ static FsmFragment* fsm_fragment_construct(
             err
         );
         break;
-    case PLUS:
-        assert(
-            !right
-        );
-        res = plus_fsm_fragment(
-            left,
-            states,
-            err
-        );
-        break;
     case QMARK:
         assert(
             !right
@@ -378,6 +379,16 @@ static FsmFragment* fsm_fragment_construct(
     if (
         *err 
     ) goto invalid_alloc;
+
+    if (
+        left &&
+        left != res 
+    ) free(left);
+
+    if (
+        right && 
+        right != res 
+    ) free(right);
 
     return res;
     
@@ -1109,59 +1120,4 @@ static FsmFragment* star_fsm_fragment(
         *err |= YAR_INVALID_ALLOC;
         return NULL;
 
-}
-
-static FsmFragment* plus_fsm_fragment(
-    FsmFragment *left, 
-    Vector      *states,
-    uint8_t     *err
-){
-    assert(
-        left 
-    );
-
-    if (
-        *err 
-    ) return NULL;
-
-    Transition transition = {
-        .is_empty = 1
-    };
-
-    transition.dest = left->initial_state;
-
-    if (
-        !left->final_state->transitions
-    ){
-        left->final_state->transitions = vector_construct(
-            sizeof(Transition)
-        );
-
-        if (
-            !left->final_state->transitions
-        ) goto invalid_alloc;
-    }
-    
-    int vec_err = vector_append(
-        &left->final_state->transitions,
-        &transition,
-        sizeof(Transition)
-    );
-
-    if (
-        vec_err
-    ) goto invalid_vec_alloc;
-
-    return left;
-
-    invalid_vec_alloc:
-    
-        assert(
-            vec_err == VEC_RESIZE_FAILED
-        );
-
-    invalid_alloc:
-        
-        *err |= YAR_INVALID_ALLOC;
-        return NULL;
 }

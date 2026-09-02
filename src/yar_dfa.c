@@ -139,6 +139,12 @@ void yar_dfa_destroy(
             );
         }
     }
+
+    assert(
+        !vector_destroy(
+            dfa->states
+        )
+    );
 }
 
 static Vector* sunions_construct(
@@ -172,13 +178,8 @@ static Vector* sunions_construct(
 
     if (
         vec_err 
-    ) {
-        sunion_destroy(
-            initial_sunion
-        );
-
-        goto invalid_vec_alloc;
-    }
+    ) goto invalid_vec_alloc;
+    
 
     initial_sunion->states = vector_construct(
         sizeof(State*)
@@ -210,7 +211,7 @@ static Vector* sunions_construct(
     );
 
     if (
-        initial_sunion->transitions
+        !initial_sunion->transitions
     ) goto invalid_alloc;
 
     for(
@@ -236,13 +237,13 @@ static Vector* sunions_construct(
         if (
             !transition.dest
         ) goto invalid_alloc;
-
+        
         transition.dest->states = vector_construct(
             sizeof(State*)
         );
 
         if (
-            transition.dest->states
+            !transition.dest->states
         ) {
             free(
                 transition.dest
@@ -277,14 +278,14 @@ static Vector* sunions_construct(
                 transition.dest->states
             )
         ){
-            assert(
-                !vector_destroy(
-                    transition.dest->states
-                )
+            sunion_destroy(
+                transition.dest
             );
+
             free(
                 transition.dest
             );
+
             continue;
         }
 
@@ -296,6 +297,7 @@ static Vector* sunions_construct(
                 sunions
             )
         ) goto invalid_alloc;
+        
 
         vec_err = vector_append(
             &initial_sunion->transitions,
@@ -305,19 +307,8 @@ static Vector* sunions_construct(
 
         if (
             vec_err
-        ) {
-            assert(
-                !vector_destroy(
-                    transition.dest->states
-                )
-            );
-            
-            free(
-                transition.dest
-            );
-
-            goto invalid_vec_alloc;
-        }
+        ) goto invalid_vec_alloc;
+        
     }   
 
     set_final_sunions(
@@ -399,6 +390,10 @@ static void sunions_destroy(
             *curr
         );
 
+        free(
+            *curr
+        );
+
         *curr = NULL;
     }
 
@@ -416,6 +411,10 @@ static FSM sunions_to_dfa(
     Vector *states = vector_construct(
         sizeof(State*)
     );
+
+    if (
+        !states 
+    ) goto invalid_alloc;
 
     for(
         int idx = 0;
@@ -538,15 +537,33 @@ static FSM sunions_to_dfa(
     invalid_alloc:
 
         if (
-            sunions
+            states
         ) {
-            sunions_destroy(
-                sunions
-            );
+
+            for(
+                int idx = 0;
+                idx < vector_get_size(
+                    states
+                );
+                idx++  
+            ){
+                State **state = vector_get(
+                    states,
+                    idx
+                );
+
+                vector_destroy(
+                    (*state)->transitions
+                );
+
+                free(
+                    *state
+                );
+            }
 
             assert(
                 !vector_destroy(
-                    sunions
+                    states
                 )
             );
         }
@@ -634,7 +651,17 @@ static int dfa_recursive_conversion(
                 *curr_s,
                 curr_transition->dest->states
             )
-        ) return YAR_INVALID_ALLOC;
+        ) {
+            sunion_destroy(
+                curr_transition->dest
+            );
+
+            free(
+                curr_transition->dest
+            );
+
+            return YAR_INVALID_ALLOC;
+        }
     }
 
     int is_self_loop = 0;
@@ -665,12 +692,14 @@ static int dfa_recursive_conversion(
     if (
         is_self_loop
     ) {
-        vector_destroy(
-            curr_transition->dest->states
+        sunion_destroy(
+            curr_transition->dest
         );
+
         free(
             curr_transition->dest
         );
+
         curr_transition->dest = *loop_state;
         return 0;
     }
@@ -684,13 +713,18 @@ static int dfa_recursive_conversion(
         if (
             err 
         ) {
+            assert(
+                err == VEC_RESIZE_FAILED
+            );
+
             sunion_destroy(
                 curr_transition->dest
             );
 
-            assert(
-                err == VEC_RESIZE_FAILED
+            free(
+                curr_transition->dest
             );
+            
             return YAR_INVALID_ALLOC;
         }
     }
@@ -760,10 +794,8 @@ static int dfa_recursive_conversion(
                     transition.dest->states
                 )
             ) {
-                assert(
-                    !vector_destroy(
-                        transition.dest->states
-                    )
+                sunion_destroy(
+                    transition.dest
                 );
 
                 free(
@@ -782,9 +814,11 @@ static int dfa_recursive_conversion(
             vector_destroy(
                 transition.dest->states
             );
+
             free(
                 transition.dest
             );
+
             continue;
         }
 
@@ -795,11 +829,7 @@ static int dfa_recursive_conversion(
                 alphabet,
                 sunions
             )
-        ){
-            sunion_destroy(
-                transition.dest
-            );
-        };
+        ) return YAR_INVALID_ALLOC;
 
         err = vector_append(
             &curr_transition->dest->transitions,
@@ -810,10 +840,6 @@ static int dfa_recursive_conversion(
         if (
             err
         ) {
-            sunion_destroy(
-                transition.dest
-            );
-            
             assert(
                 err == VEC_RESIZE_FAILED
             );

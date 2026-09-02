@@ -781,6 +781,87 @@ static AstNode* trasnlate_ranged_quantifier(
         return NULL;
 }
 
+static AstNode* translate_plus_quantifier(
+    AstNode *left, 
+    Token   curr
+){
+    uint8_t err = 0;
+
+    AstNode *right = NULL, *new_left = NULL;
+
+    AstNode *copy_node = clone_ast(
+        left,
+        &err 
+    );
+
+    if (
+        !copy_node
+    ) goto invalid_alloc;
+
+    Token concat = {
+        .class = CONCAT
+    };
+
+    Token star = {
+        .class = STAR
+    };
+
+    right = ast_node_construct(
+        star,
+        copy_node,
+        NULL
+    );
+
+    if (
+        !right
+    ) goto invalid_alloc;
+
+    new_left = ast_node_construct(
+        concat,
+        left,
+        right
+    );
+
+    if (
+        !new_left
+    ) goto invalid_alloc;
+
+    left = new_left;
+    return left;
+
+    invalid_alloc:
+
+        if ( 
+            copy_node
+        ) {
+            yar_ast_destroy(
+                copy_node
+            );
+        }
+        if (
+            new_left
+        ){
+            yar_ast_destroy(
+                new_left
+            );
+        }
+        if (
+            right
+        ) {
+            yar_ast_destroy(
+                right
+            );
+        }
+        if (
+            left
+        ) {
+            yar_ast_destroy(
+                left
+            );
+        }
+        return NULL;
+}
+
 static AstNode* quantifier_expr(
     Parser *parser
 ){
@@ -841,6 +922,12 @@ static AstNode* quantifier_expr(
             break;
         case RANGED_QUANTIFIER:
             left = trasnlate_ranged_quantifier(
+                left,
+                curr
+            );
+            break;
+        case PLUS:
+            left = translate_plus_quantifier(
                 left,
                 curr
             );
