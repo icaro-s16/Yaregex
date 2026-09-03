@@ -83,6 +83,7 @@ FSM yar_nfa_construct(
     invalid_alloc:
 
         FSM nfa = {
+            .type           = NFA,
             .fsm_fragment   = fsm_fragment,
             .states         = states
         };
@@ -109,7 +110,9 @@ FSM yar_nfa_construct(
             );
         }
 
-        *err |= YAR_INVALID_ALLOC;
+        if (
+            !*err 
+        ) *err |= YAR_INVALID_ALLOC;
         return (FSM){0};
 }
 

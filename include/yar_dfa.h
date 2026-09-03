@@ -33,6 +33,12 @@ static int dfa_recursive_conversion(SUnion *curr, SUTransition *curr_transition,
 
 static int empty_transitions_closure(State *curr, Vector *sunions);
 
-static int symbol_transitions_closure(const Token symbol, State *curr, Vector *sunions);
+static int symbol_transitions_closure(Token *symbol, State *curr, Vector *sunions);
 
 static void set_final_sunions(const State *nfa_final_state, Vector *sunions);
+
+static int is_white_space(const char ch);
+
+static int is_digit(const char ch);
+
+static int match_ranged_char(char ch, Token ranged_char);

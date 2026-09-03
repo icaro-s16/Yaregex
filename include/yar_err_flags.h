@@ -37,6 +37,6 @@ enum {
      * NOTE: If an allocation can not be 
      * created.
      */
-    YAR_INVALID_ALLOC                      = 1<<6, 
-    YAR_INVALID_PATTERN                    = 1<<7
+    YAR_INVALID_ALLOC                  = 1<<6, 
+    YAR_INVALID_PATTERN                = 1<<7
 };

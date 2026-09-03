@@ -35,9 +35,51 @@ int yar_dfa_match(
                 transition_idx
             );
 
-            if (
-                curr_transition->symbol.ch != text[text_idx]
-            ) continue;
+            switch(
+                curr_transition->symbol.class
+            ) {
+                case ANY_DIGIT:
+                    if (
+                        !is_digit(
+                            text[text_idx]
+                        )
+                    ) continue;
+                    break;
+                case ANY_NON_DIGIT:
+                    if (
+                        is_digit(
+                            text[text_idx]
+                        )
+                    ) continue;
+                    break;
+                case ANY_WHITESPACE:
+                    if (
+                        !is_white_space(
+                            text[text_idx]
+                        )
+                    ) continue;
+                    break;
+                case ANY_NON_WHITESPACE:
+                    if (
+                        is_white_space(
+                            text[text_idx]
+                        )
+                    ) continue;
+                    break;
+                case RANGED_CHAR:
+                    if (
+                        !match_ranged_char(
+                            text[text_idx],
+                            curr_transition->symbol
+                        )
+                    ) continue;
+                    break;
+                default:
+                    if (
+                        curr_transition->symbol.ch != text[text_idx]
+                    ) continue;
+                    break;
+            }
 
             valid_transition = 1;
             curr_state = curr_transition->dest;
@@ -180,7 +222,6 @@ static Vector* sunions_construct(
         vec_err 
     ) goto invalid_vec_alloc;
     
-
     initial_sunion->states = vector_construct(
         sizeof(State*)
     );
@@ -266,11 +307,17 @@ static Vector* sunions_construct(
 
             if (
                 symbol_transitions_closure(
-                    *symbol,
+                    symbol,
                     *curr_s,
                     transition.dest->states
                 )
             ) goto invalid_alloc;
+
+            if (
+                symbol->class != 
+                transition.symbol.class
+            ) transition.symbol = *symbol;
+
         }
 
         if (
@@ -789,7 +836,7 @@ static int dfa_recursive_conversion(
 
             if (
                 symbol_transitions_closure(
-                    *symbol,
+                    symbol,
                     *curr_s,
                     transition.dest->states
                 )
@@ -804,6 +851,15 @@ static int dfa_recursive_conversion(
 
                 return YAR_INVALID_ALLOC;
             };
+
+            /*
+             * NOTE: Special symbols, can group other symbols.
+             * that are inside of it.
+             */
+            if (
+                symbol->class != 
+                transition.symbol.class
+            ) transition.symbol = *symbol;
         }
 
         if (
@@ -922,12 +978,12 @@ static int empty_transitions_closure(
 }
 
 static int symbol_transitions_closure(
-    const Token symbol, 
+    Token       *symbol, 
     State       *curr_s, 
     Vector      *sunions
 ){
     assert(
-        is_terminal_token(symbol) &&
+        is_terminal_token(*symbol) &&
         curr_s                    &&
         sunions
     );
@@ -951,8 +1007,126 @@ static int symbol_transitions_closure(
         );
 
         if (
-            curr_t->is_empty                    ||
-            curr_t->symbol.ch != symbol.ch      
+            curr_t->is_empty                    
+        ) continue;
+
+        if (
+            curr_t->symbol.class == SYMBOL &&
+            symbol->class == SYMBOL
+        ){
+            if (
+                symbol->ch != curr_t->symbol.ch
+            ) continue;
+        }
+        else if (
+            (
+                symbol->class == ANY_WHITESPACE     ||
+                symbol->class == ANY_NON_WHITESPACE ||
+                symbol->class == ANY_DIGIT          ||
+                symbol->class == ANY_NON_DIGIT      ||
+                symbol->class == RANGED_CHAR
+            ) &&
+            curr_t->symbol.class == SYMBOL
+        ){
+            switch(
+                symbol->class
+            ){
+                case ANY_WHITESPACE:
+                    if (
+                        !is_white_space(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case ANY_NON_WHITESPACE:
+                    if (
+                        is_white_space(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case ANY_DIGIT:
+                    if (
+                        !is_digit(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case ANY_NON_DIGIT:
+                    if (
+                        is_digit(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case RANGED_CHAR:
+                    if (
+                        !match_ranged_char(
+                            curr_t->symbol.ch,
+                            *symbol
+                        )
+                    ) continue;
+                    break;
+            }
+
+            curr_t->symbol = *symbol;
+        }
+        else if (
+            (
+                curr_t->symbol.class == ANY_WHITESPACE     ||
+                curr_t->symbol.class == ANY_NON_WHITESPACE ||
+                curr_t->symbol.class == ANY_DIGIT          ||
+                curr_t->symbol.class == ANY_NON_DIGIT      ||
+                curr_t->symbol.class == RANGED_CHAR
+            ) &&
+            symbol->class == SYMBOL
+        ) {
+
+            switch(
+                symbol->class
+            ){
+                case ANY_WHITESPACE:
+                    if (
+                        !is_white_space(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case ANY_NON_WHITESPACE:
+                    if (
+                        is_white_space(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case ANY_DIGIT:
+                    if (
+                        !is_digit(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case ANY_NON_DIGIT:
+                    if (
+                        is_digit(
+                            curr_t->symbol.ch
+                        )
+                    ) continue;
+                    break;
+                case RANGED_CHAR:
+                    if (
+                        !match_ranged_char(
+                            curr_t->symbol.ch,
+                            *symbol
+                        )
+                    ) continue;
+                    break;
+            }
+
+            *symbol = curr_t->symbol;
+        }
+        else if (
+            symbol->class != curr_t->symbol.class
         ) continue;
 
         if (
@@ -972,6 +1146,7 @@ static int symbol_transitions_closure(
         if (
             err 
         ) goto invalid_vec_alloc;
+    
     }
 
     return 0;
@@ -1019,4 +1194,51 @@ static void set_final_sunions(
 
         (*curr)->is_final = 1;
     }
+}
+
+static int is_white_space(
+    const char ch
+){
+    return (
+        (
+            ch >= 9 && ch <= 13 
+        )  ||
+        ch == 32
+    ) ? 1 : 0;
+}
+
+static int is_digit(
+    const char ch
+){
+    return (
+        ch >= 48 && ch <= 57 
+    ) ? 1 : 0;
+}
+
+static int match_ranged_char(
+    char  ch, 
+    Token ranged_char
+){
+    assert(
+        ranged_char.class == RANGED_CHAR
+    );
+
+    uint ascii_ch = (uint)ch;
+
+    /*
+     * NOTE: I add this value to move the upper
+     * alphabet from the begin of ASCII table, to
+     * after the final of lower tabler, changing 
+     * the alphabet is an crescent sequence of 
+     * numbers, from 97 untill 148.
+     */
+    if (
+        ascii_ch >= 65 && ascii_ch <= 90
+    ) ascii_ch += 58;
+
+    return (
+        ascii_ch >= ranged_char.start &&
+        ascii_ch <= ranged_char.end
+    ) ? 1 : 0;
+
 }

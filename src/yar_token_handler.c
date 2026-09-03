@@ -188,8 +188,16 @@ Token ranged_char_handler(
         )
     );
 
+    if (
+        token.start >= 65 && token.start <= 90
+    ) token.start += 58;
+
+    if (
+        token.end >= 65 && token.end<= 90
+    ) token.end += 58;
+
     scanner->state |= (
-        token.start <= token.end 
+        token.start >= token.end 
     ) ?
     SCANNER_INVALID_RANGED_CHAR :
     scanner->state;
