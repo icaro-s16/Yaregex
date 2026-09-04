@@ -853,8 +853,8 @@ static int dfa_recursive_conversion(
             };
 
             /*
-             * NOTE: Special symbols, can group other symbols.
-             * that are inside of it.
+             * NOTE: Special symbols can group other symbols
+             * that are inside them.
              */
             if (
                 symbol->class != 
@@ -1226,11 +1226,11 @@ static int match_ranged_char(
     uint ascii_ch = (uint)ch;
 
     /*
-     * NOTE: I add this value to move the upper
-     * alphabet from the begin of ASCII table, to
-     * after the final of lower tabler, changing 
-     * the alphabet is an crescent sequence of 
-     * numbers, from 97 untill 148.
+     * NOTE: I added this value to move the uppercase
+     * letters from the beginning of the ASCII table to
+     * after the lowercase letters. This makes the
+     * alphabet a continuous sequence of numbers, 
+     * from 97 to 148.
      */
     if (
         ascii_ch >= 65 && ascii_ch <= 90
