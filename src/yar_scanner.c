@@ -130,13 +130,14 @@ Vector* yar_scan(
     const char* pattern,
     uint8_t     *err
 ){
+    assert(
+        pattern &&
+        err 
+    );
+
     if (
         strlen(pattern) <= 0
     ) return NULL;
-    
-    assert(
-        pattern
-    );
 
     Scanner scanner = scanner_construct(
         pattern
@@ -145,7 +146,7 @@ Vector* yar_scan(
     if (
         scanner.state
     ) {
-        *err = scanner.state;
+        *err |= scanner.state;
         return NULL;
     }
 
@@ -169,14 +170,10 @@ Vector* yar_scan(
     if (
         scanner.state 
     ) {
-        assert(
-            !vector_destroy(
-                scanner.tokens
-            )
+        vector_destroy(
+            scanner.tokens
         );
-
-        *err = scanner.state;
-
+        *err |= scanner.state;
         return NULL;
     }
 
@@ -192,8 +189,9 @@ int is_terminal_token(
         token.class == ANY_NON_DIGIT       ||
         token.class == ANY_WHITESPACE      ||
         token.class == ANY_NON_WHITESPACE  ||
-        token.class == RANGED_CHAR         
-    ) ? 1 : 0;
+        token.class == RANGED_CHAR         ||
+        token.class == WILDCARD
+    );
 }
 
 int is_quantifier_token(
@@ -206,7 +204,7 @@ int is_quantifier_token(
         token.class == QUANTIFIER_EXACT  ||
         token.class == QUANTIFIER_MIN    ||
         token.class == RANGED_QUANTIFIER      
-    ) ? 1 : 0;
+    );
 }
 
 static Scanner scanner_construct(
@@ -324,9 +322,7 @@ static int scanner_consume(
             if (
                 err 
             ) goto invalid_vec_alloc;
-                
         }
-
         break;
     }
     case '[':{
@@ -404,7 +400,7 @@ static int scanner_consume(
             err == VEC_RESIZE_FAILED 
         );
 
-        scanner->state |= VEC_RESIZE_FAILED;
+        scanner->state |= YAR_INVALID_ALLOC;
         
         return SCANNER_EMPTY_TAPE;
 }
@@ -450,11 +446,11 @@ static void scanner_append_symbol(
             &concat,
             sizeof(Token)
         );
-    }
 
-    if (
-        err 
-    ) goto invalid_vec_alloc;
+        if (
+            err 
+        ) goto invalid_vec_alloc;
+    }
 
     err = vector_append(
         &scanner->tokens,
@@ -478,7 +474,7 @@ static void scanner_append_symbol(
             err == VEC_RESIZE_FAILED 
         );
         
-        scanner->state |= VEC_RESIZE_FAILED;
+        scanner->state |= YAR_INVALID_ALLOC;
         
         return;
 

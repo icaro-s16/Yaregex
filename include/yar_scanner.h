@@ -10,7 +10,8 @@
     X(PLUS, '+')                \
     X(QMARK, '?')               \
     X(STAR, '*')                \
-    X(PIPE, '|')                
+    X(PIPE, '|')                \
+    X(WILDCARD, '.')
 
 #define STR_TOKENS(X)               \
     X(RANGED_CHAR, "[%c-%c]")       \
@@ -23,8 +24,8 @@
     X(QUANTIFIER_MIN, "{%d,}")      
 
 enum{
-    TOKEN_STRING_SIZE           = 10,
-    SCANNER_EMPTY_TAPE          = 1
+    TOKEN_STRING_SIZE   = 10,
+    SCANNER_EMPTY_TAPE  = 1
 };
 
 typedef enum{

@@ -8,9 +8,9 @@ typedef struct{
 }State;
 
 typedef struct{
-    uint8_t is_empty;
-    Token   symbol;
-    State   *dest;
+    uint8_t      is_empty;
+    char         symbol;
+    State        *dest;
 }Transition;
 
 typedef struct{
@@ -49,7 +49,9 @@ FSM yar_nfa_construct(const char *pattern, uint8_t *err);
 
 void yar_nfa_destroy(FSM *nfa);
 
-static Vector* get_alphabet(Vector *tokens);
+static int alphabet_contains_char(const char ch, Vector *alphabet);
+
+static Vector* get_alphabet(Vector *states);
 
 static FsmFragment* fsm_fragment_construct(AstNode *root, Vector *states, uint8_t *err);
 

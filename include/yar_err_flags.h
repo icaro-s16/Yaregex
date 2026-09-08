@@ -34,9 +34,12 @@ enum {
      */
     SCANNER_INVALID_RANGED_CHAR        = 1<<5,
     /* 
-     * NOTE: If an allocation can not be 
-     * created.
+     * NOTE: Used if memory allocation fails.
      */
     YAR_INVALID_ALLOC                  = 1<<6, 
+    /*
+     * NOTE: Used if an empty pattern is used to 
+     * construct the DFA.
+     */
     YAR_INVALID_PATTERN                = 1<<7
 };

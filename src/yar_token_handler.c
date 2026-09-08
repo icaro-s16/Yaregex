@@ -5,6 +5,7 @@ Token char_tokens_handler(
     Scanner *scanner
 ){
     assert(
+        scanner &&
         scanner->tape
     );
     
@@ -71,10 +72,8 @@ Token ranged_char_handler(
         if (
             curr == '\0'
         ) symbol.class = EOT;
-        assert(
-            !vector_destroy(
-                symbols
-            )
+        vector_destroy(
+            symbols
         );
         return symbol;
     }
@@ -94,7 +93,7 @@ Token ranged_char_handler(
     ];
 
     if (
-        !isalpha(curr)
+        !isalnum(curr)
     ){
         return handle_invalid_operation_syntax(
             scanner,
@@ -142,7 +141,7 @@ Token ranged_char_handler(
     ];
 
     if (
-        !isalpha(curr)
+        !isalnum(curr)
     ){
         return handle_invalid_operation_syntax(
             scanner,
@@ -160,11 +159,10 @@ Token ranged_char_handler(
     if (
         err 
     ) {
-        assert(
-            !vector_destroy(
-                symbols
-            )
+        vector_destroy(
+            symbols
         );
+
         return (Token){0};
     }
 
@@ -182,25 +180,13 @@ Token ranged_char_handler(
             curr
         );
     }
-    assert(
-        !vector_destroy(
-            symbols
-        )
+    vector_destroy(
+        symbols
     );
-
-    if (
-        token.start >= 65 && token.start <= 90
-    ) token.start += 58;
-
-    if (
-        token.end >= 65 && token.end<= 90
-    ) token.end += 58;
 
     scanner->state |= (
         token.start >= token.end 
-    ) ?
-    SCANNER_INVALID_RANGED_CHAR :
-    scanner->state;
+    ) ? SCANNER_INVALID_RANGED_CHAR : scanner->state;
 
     return token;
 
@@ -209,10 +195,8 @@ Token ranged_char_handler(
         if (
             symbols
         ) {
-            assert(
-                !vector_destroy(
-                    symbols
-                )
+            vector_destroy(
+                symbols
             );
         }
 
@@ -228,8 +212,8 @@ Token quantifier_handler(
         scanner && 
         scanner->tape 
     );
-    Token token;
 
+    Token token;
     Vector *symbols = vector_construct(
         sizeof(Token)
     );
@@ -251,11 +235,10 @@ Token quantifier_handler(
         curr != '{'
     ) {
         symbol.ch = curr;
-        assert(
-            !vector_destroy(
-                symbols
-            )
+        vector_destroy(
+            symbols
         );
+
         symbol.ch = curr;
         if (
             curr == '\0'
@@ -306,17 +289,13 @@ Token quantifier_handler(
     if (
         curr == '}'
     ){
-        assert(
-            !vector_destroy(
-                symbols
-            )
+        vector_destroy(
+            symbols
         );
 
         scanner->state |= (
             !token.start 
-        ) ? 
-        SCANNER_INVALID_QUANTIFIER : 
-        scanner->state;
+        ) ? SCANNER_INVALID_QUANTIFIER : scanner->state;
 
         token.class = QUANTIFIER_EXACT;
         return token;
@@ -347,17 +326,13 @@ Token quantifier_handler(
     if (
         curr == '}'
     ){  
-        assert(
-            !vector_destroy(
-                symbols
-            )
+        vector_destroy(
+            symbols
         );
 
         scanner->state |= (
             !token.start 
-        ) ? 
-        SCANNER_INVALID_QUANTIFIER : 
-        scanner->state;
+        ) ? SCANNER_INVALID_QUANTIFIER : scanner->state;
 
         token.class = QUANTIFIER_MIN;
         return token;
@@ -396,37 +371,31 @@ Token quantifier_handler(
             curr
         );
     }
-    assert(
-        !vector_destroy(
-            symbols
-        )
+    vector_destroy(
+        symbols
     );
 
     scanner->state |= (
         !token.start 
-    ) ? 
-    SCANNER_INVALID_QUANTIFIER : 
-    scanner->state;
+    ) ? SCANNER_INVALID_QUANTIFIER : scanner->state;
 
     scanner->state |= (
         token.start >= token.end
-    ) ? 
-    SCANNER_INVALID_RANGED_QUANTIFIER :
-    scanner->state;
+    ) ? SCANNER_INVALID_RANGED_QUANTIFIER : scanner->state;
 
     token.class = RANGED_QUANTIFIER;
     return token;
 
     invalid_alloc:
-
-        assert(
-            !vector_destroy(
+        if (
+            symbols 
+        ){
+            vector_destroy(
                 symbols
-            )
-        );
+            );
+        }
 
         scanner->state |= YAR_INVALID_ALLOC;
-
         return (Token){0};
 
 }
@@ -528,7 +497,6 @@ Token backslash_handler(
         );
 
         scanner->state |= YAR_INVALID_ALLOC;
-        
         return (Token){0};
 }
 
@@ -634,7 +602,6 @@ static int handler_append_symbol(
         assert(
             err == VEC_RESIZE_FAILED
         );
-
         return YAR_INVALID_ALLOC;
 }
 
@@ -689,10 +656,8 @@ static Token handle_invalid_operation_syntax(
         );                                                      
     }
 
-    assert(                                                           
-        !vector_destroy(                                             
-            symbols                                                 
-        )
+    vector_destroy(                                             
+        symbols                                                 
     );                    
     symbols = NULL;
 
@@ -712,10 +677,8 @@ static Token handle_invalid_operation_syntax(
         if (
             symbols
         ) {
-            assert(
-                !vector_destroy(
-                    symbols
-                )
+            vector_destroy(
+                symbols
             );
         }
 

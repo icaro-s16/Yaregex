@@ -1,31 +1,40 @@
-#include "yar_parser_tests.c"
-#include "yar_dfa.h"
+#include "yaregex.h"
+#include <stdio.h>
 
 int main(){
-    char *pattern = "[A-Z]|([a-B]*)";
-    char *text = "AAAAAAAAA";
     uint8_t err = 0;
-    FSM dfa = yar_dfa_construct(
-        pattern,
+    YaRegex *regex = yar_construct(
+        "[0-9]*", 
         &err
     );
 
-    if (
-        err 
-    ) printf("Erro\n");
-    else {
-        printf(
-            "%s\n",
-            (
-                yar_dfa_match(
-                    &dfa, 
-                    text
-                )
-            ) ? "True" : "False"
-        );
-        yar_dfa_destroy(
-            &dfa
-        );
-    }
+    printf(
+        "%d\n",
+        yar_match_full(regex, "akjkajdkajdk")
+    );
+
+    printf(
+        "%d\n",
+        yar_search(regex, "akjk1aajdk[0,9]")
+    );
+
+    char *text = "12132lklaadpalkpsdl1";
+    YarSlice slice = yar_capture(regex, text);
+
+    printf(
+        "%d-%d\n",
+        slice.start, slice.end
+    );
+
+    slice = yar_capture(regex, NULL);
+
+    printf(
+        "%d-%d\n",
+        slice.start, slice.end
+    );
+
+
+    yar_destroy(regex);
+
     return 0;
 }

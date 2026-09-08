@@ -1,6 +1,5 @@
 #include "yar_nfa.h"
 
-
 FSM yar_nfa_construct(
     const char  *pattern,
     uint8_t     *err
@@ -31,12 +30,21 @@ FSM yar_nfa_construct(
 
     if (
         !states
-    ) goto invalid_alloc;
+    ) {
+        *err |= YAR_INVALID_ALLOC;
+        goto invalid_alloc;
+    }
 
     root = yar_ast_construct(
         tokens,
         err
     );
+
+    vector_destroy(
+        tokens
+    );
+    
+    tokens = NULL;
 
     if (
         *err
@@ -51,6 +59,7 @@ FSM yar_nfa_construct(
     yar_ast_destroy(
         root
     );
+
     root = NULL;
 
     if (
@@ -60,18 +69,15 @@ FSM yar_nfa_construct(
     fsm_fragment->final_state->is_final = 1;
 
     Vector *alphabet = get_alphabet(
-        tokens
+        states
     );
 
     if (
         !alphabet
-    ) goto invalid_alloc;
-
-    assert(
-        !vector_destroy(
-            tokens
-        )
-    );
+    ) {
+        *err |= YAR_INVALID_ALLOC;
+        goto invalid_alloc;
+    }
 
     return (FSM){
         .type           = NFA,
@@ -103,16 +109,11 @@ FSM yar_nfa_construct(
         if (
             tokens
         ) {
-            assert(
-                !vector_destroy(
-                    tokens
-                )
+            vector_destroy(
+                tokens
             );
         }
 
-        if (
-            !*err 
-        ) *err |= YAR_INVALID_ALLOC;
         return (FSM){0};
 }
 
@@ -120,17 +121,15 @@ void yar_nfa_destroy(
     FSM *nfa
 ){
     assert(
-        nfa                 &&
+        nfa &&
         nfa->type == NFA 
     );
 
     if (
         nfa->alphabet
     ) {
-        assert(
-            !vector_destroy(
-                nfa->alphabet
-            )
+        vector_destroy(
+            nfa->alphabet
         );
     }
 
@@ -145,33 +144,29 @@ void yar_nfa_destroy(
             );
             idx ++
         ){
-            State *curr = *((State**)vector_get(
+            State **curr = vector_get(
                 nfa->states,
                 idx
-            ));
+            );
             
             if (
                 !curr 
             ) continue;
 
             if (
-                curr->transitions
+                (*curr)->transitions
             ) {
-                assert(
-                    !vector_destroy(
-                        curr->transitions
-                    )
+                vector_destroy(
+                    (*curr)->transitions
                 );
             }
             
             free(
-                curr
+                *curr
             );
         }
-        assert(
-            !vector_destroy(
-                nfa->states
-            )
+        vector_destroy(
+            nfa->states
         );
     }
 
@@ -188,15 +183,43 @@ void yar_nfa_destroy(
     nfa->states = NULL;
 }
 
-static Vector* get_alphabet(
-    Vector *tokens
+static int alphabet_contains_char(
+    const char  ch, 
+    Vector      *alphabet
 ){
     assert(
-        tokens
+        alphabet
+    );
+
+    for(
+        int idx = 0;
+        idx < vector_get_size(
+            alphabet
+        );
+        idx++
+    ) {
+        char *curr_ch = vector_get(
+            alphabet,
+            idx
+        );
+
+        if (
+            *curr_ch == ch 
+        ) return 1;
+    }
+
+    return 0;
+}
+
+static Vector* get_alphabet(
+    Vector *states
+){
+    assert(
+        states
     );
 
     Vector *alphabet = vector_construct(
-        sizeof(Token)
+        sizeof(char)
     );
 
     int err = 0;
@@ -207,58 +230,51 @@ static Vector* get_alphabet(
 
 
     for(
-        int token_idx = 0;
-        token_idx < vector_get_size(
-            tokens
+        int state_idx = 0;
+        state_idx < vector_get_size(
+            states
         ); 
-        token_idx ++
+        state_idx ++
     ){
-        Token curr_token = *((Token*)(vector_get(
-            tokens,
-            token_idx
-        )));
+        State **curr_state = vector_get(
+            states,
+            state_idx
+        );
 
         if (
-            !is_terminal_token(
-                curr_token
-            ) 
+            !(*curr_state)->transitions
         ) continue;
 
-        int is_new_symbol = 1;
-
         for(
-            int symbol_idx = 0;
-            symbol_idx < vector_get_size(
-                alphabet
+            int transition_idx = 0;
+            transition_idx < vector_get_size(
+                (*curr_state)->transitions
             );
-            symbol_idx++
-        ){
-            Token curr_symbol = *((Token*)(vector_get(
-                alphabet,
-                symbol_idx
-            )));
+            transition_idx++
+        ) {
+            Transition *curr_transition = vector_get(
+                (*curr_state)->transitions,
+                transition_idx
+            );
 
             if (
-                curr_symbol.ch == curr_token.ch
-            ) {
-                is_new_symbol = 0;
-                break;
-            }
-        }
+                curr_transition->is_empty ||
+                alphabet_contains_char(
+                    curr_transition->symbol,
+                    alphabet
+                )
+            ) continue;
 
-        if (
-            is_new_symbol
-        ) {
             err = vector_append(
                 &alphabet,
-                &curr_token,
-                sizeof(Token)
+                &curr_transition->symbol,
+                sizeof(char)
             );
-        }
 
-        if (
-            err 
-        ) goto invalid_alloc;
+            if (
+                err 
+            ) goto invalid_alloc;
+        }
     }
 
     if (
@@ -271,11 +287,13 @@ static Vector* get_alphabet(
 
     invalid_alloc:
 
-        assert(
-            !vector_destroy(
+        if (
+            alphabet
+        ){
+            vector_destroy(
                 alphabet
-            )
-        );
+            );
+        }
 
         return NULL;
 
@@ -291,7 +309,8 @@ static FsmFragment* fsm_fragment_construct(
     );
 
     if (
-        !root 
+        !root ||
+        *err 
     ) return NULL;
 
     Token curr = root->op;
@@ -403,7 +422,7 @@ static FsmFragment* fsm_fragment_construct(
 
         if (
             right
-        )free(right);
+        ) free(right);
 
         if (
             res 
@@ -418,6 +437,15 @@ static FsmFragment* terminal_fsm_fragment(
     Vector  *states,
     uint8_t *err
 ){
+    assert(
+        states
+    );
+
+    if (
+        *err 
+    ) return NULL;
+
+
     FsmFragment *res = calloc(
         1,
         sizeof(FsmFragment)
@@ -448,7 +476,6 @@ static FsmFragment* terminal_fsm_fragment(
         free(
             res->initial_state
         );
-
         goto invalid_vec_alloc;
     }
 
@@ -471,9 +498,13 @@ static FsmFragment* terminal_fsm_fragment(
         vec_err
     ) goto invalid_vec_alloc;
 
+    assert(
+        symbol.class == SYMBOL
+    );
+
     Transition transition = {
-        .symbol = symbol,
-        .dest   = res->final_state
+        .symbol        = symbol.ch,
+        .dest          = res->final_state
     };
 
     res->initial_state->transitions = vector_construct(
@@ -519,10 +550,15 @@ static FsmFragment* concat_fsm_fragment(
     uint8_t     *err
 ){
     assert(
-        left &&
-        right
+        left    &&
+        right   &&
+        states 
     );
-    
+
+    if (
+        *err 
+    ) return NULL;
+
     int vec_err = 0;
 
     FsmFragment *res = calloc(
@@ -557,12 +593,10 @@ static FsmFragment* concat_fsm_fragment(
 
     left->final_state->is_final = right->initial_state->is_final;
     
-    assert(
-        !vector_destroy(
-            right->initial_state->transitions
-        )
+    vector_destroy(
+        right->initial_state->transitions
     );
-
+    
     vec_err = vector_remove(
         &states,
         vector_find(
@@ -608,15 +642,16 @@ static FsmFragment* pipe_fsm_fragment(
     uint8_t     *err
 ){
     assert(
-        left &&
-        right
+        left    &&
+        right   &&
+        states 
     );
-
-    int vec_err = 0;
 
     if (
         *err 
     ) return NULL;
+
+    int vec_err = 0;
 
     FsmFragment *res = calloc(
         1,
@@ -663,6 +698,10 @@ static FsmFragment* pipe_fsm_fragment(
     if (
         vec_err
     ) {
+        vector_destroy(
+            res->initial_state->transitions
+        );
+
         free(
             res->initial_state
         );
@@ -787,7 +826,8 @@ static FsmFragment* qmark_fsm_fragment(
     uint8_t     *err
 ){
     assert(
-        left
+        left &&
+        states 
     );
 
     if (
@@ -837,6 +877,10 @@ static FsmFragment* qmark_fsm_fragment(
     if (
         vec_err
     ) {
+        vector_destroy(
+            res->initial_state->transitions
+        );
+
         free(
             res->initial_state
         );
@@ -851,13 +895,7 @@ static FsmFragment* qmark_fsm_fragment(
 
     if (
         !res->final_state
-    ) {
-        *err |= YAR_INVALID_ALLOC;
-        free(
-            res 
-        );
-        return NULL;
-    }
+    ) goto invalid_alloc; 
 
     vec_err = vector_append(
         &states,
@@ -989,6 +1027,7 @@ static FsmFragment* star_fsm_fragment(
         free(
             res->initial_state
         );
+
         goto invalid_alloc;
     }
 
@@ -1001,9 +1040,14 @@ static FsmFragment* star_fsm_fragment(
     if (
         vec_err
     ) {
+        vector_destroy(
+            res->initial_state->transitions
+        );
+
         free(
             res->initial_state
         );
+
         goto invalid_vec_alloc;
     }
 
@@ -1026,6 +1070,7 @@ static FsmFragment* star_fsm_fragment(
         free(
             res->final_state
         );
+
         goto invalid_alloc;
     }
 
@@ -1038,9 +1083,14 @@ static FsmFragment* star_fsm_fragment(
     if (
         vec_err
     ) {
+        vector_destroy(
+            res->final_state->transitions
+        );
+
         free(
             res->final_state
         );
+
         goto invalid_vec_alloc;
     }
 
@@ -1122,5 +1172,4 @@ static FsmFragment* star_fsm_fragment(
 
         *err |= YAR_INVALID_ALLOC;
         return NULL;
-
 }

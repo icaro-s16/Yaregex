@@ -24,7 +24,7 @@ AstNode* yar_ast_construct(Vector *tokens, uint8_t *err);
 
 void yar_ast_destroy(AstNode *root);
 
-static AstNode* clone_ast(AstNode* root, uint8_t *err);
+static AstNode* clone_ast(AstNode* root);
 
 static Parser parser_construct(Vector *tokens);
 
@@ -47,5 +47,9 @@ static AstNode* translate_plus_quantifier(AstNode *left, Token curr);
 static AstNode* quantifier_expr(Parser *parser);
 
 static AstNode* grouping_expr(Parser *parser);
+
+static AstNode* create_special_symbols_node(int start, int end, AstNode *initial_node);
+
+static AstNode* translate_special_symbols(const Token special_symbol);
 
 static AstNode* terminal(Parser *parser);

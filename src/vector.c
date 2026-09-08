@@ -187,6 +187,169 @@ size_t vector_get_data_type_size(
     return vector->data_type_size;
 }
 
+void vector_sort(
+    Vector *vector, 
+    CompareFunc func
+){
+    assert(
+        vector &&
+        func
+    );
+
+    for(
+        int idx = vector->size / 2;
+        idx >= 0;
+        idx--
+    ) {
+        vector_heapify(
+            vector,
+            vector->size,
+            idx,
+            func
+        );
+    }
+
+    size_t heap_size = vector->size;
+
+    for(
+        int idx = vector->size - 1;
+        idx > 0;
+        idx--
+    ) {
+        void *aux = calloc(
+            1,
+            vector->data_type_size
+        );
+
+        memcpy(
+            aux,
+            vector_get(
+                vector,
+                0
+            ),
+            vector->data_type_size
+        );
+
+        memmove(
+            vector_get(
+                vector,
+                0
+            ),
+            vector_get(
+                vector,
+                idx
+            ),
+            vector->data_type_size
+        );
+
+        memcpy(
+            vector_get(
+                vector,
+                idx
+            ),
+            aux,
+            vector->data_type_size
+        );
+
+        free(
+            aux
+        );
+
+        vector_heapify(
+            vector,
+            --heap_size,
+            0,
+            func
+        );
+    }
+}
+
+static void vector_heapify(
+    Vector *vector, 
+    size_t size, 
+    size_t initial_idx, 
+    CompareFunc func
+){
+    size_t left = initial_idx * 2 + 1;
+    size_t right = initial_idx * 2 + 2;
+    size_t pivot = initial_idx;
+    if (
+        left < size &&
+        func(
+            vector_get(
+                vector,
+                left
+            ),
+            vector_get(
+                vector,
+                pivot
+            )
+        )
+    ) pivot = left;
+    if (
+        right < size &&
+        func(
+            vector_get(
+                vector,
+                right
+            ),
+            vector_get(
+                vector,
+                pivot
+            )
+        )
+    ) pivot = right;
+    if (
+        pivot != initial_idx
+    ) {
+        void *aux = calloc(
+            1,
+            vector->data_type_size
+        );
+
+        memcpy(
+            aux,
+            vector_get(
+                vector,
+                initial_idx
+            ),
+            vector->data_type_size
+        );
+
+        memmove(
+            vector_get(
+                vector,
+                initial_idx
+            ),
+            vector_get(
+                vector,
+                pivot
+            ),
+            vector->data_type_size
+        );
+
+        memcpy(
+            vector_get(
+                vector,
+                pivot
+            ),
+            aux,
+            vector->data_type_size
+        );
+
+        free(
+            aux
+        );
+
+        vector_heapify(
+            vector,
+            size,
+            pivot,
+            func
+        );
+    }
+}
+
 static Vector* vector_resize(
     Vector  *vector, 
     size_t  new_capacity

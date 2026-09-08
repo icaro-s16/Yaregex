@@ -10,6 +10,8 @@ enum{
     VEC_TYPE_MISMATCH = -4
 };
 
+typedef int (*CompareFunc) (void*,void*);
+
 typedef struct Vector Vector;
 
 Vector* vector_construct(size_t data_type_size);
@@ -29,5 +31,9 @@ int vector_remove(Vector **vector, size_t index);
 size_t vector_get_size(Vector *vector);
 
 size_t vector_get_data_type_size(Vector *vector);
+
+void vector_sort(Vector *vector, CompareFunc func);
+
+static void vector_heapify(Vector *vector, size_t size, size_t initial_idx, CompareFunc func);
 
 static Vector* vector_resize(Vector *vector, size_t new_capacity);
