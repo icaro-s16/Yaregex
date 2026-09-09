@@ -4,7 +4,7 @@
 int main(){
     uint8_t err = 0;
     YaRegex *regex = yar_construct(
-        "R$([1-9]|[1-9][0-9]{1,2})(\\.[0-9]{3})*(,[0-9]+)?", 
+        "(R|r)$([1-9]|[1-9][0-9]{1,2})(\\.[0-9]{3})*(,[0-9]+)?", 
         &err
     );
 
@@ -15,10 +15,9 @@ int main(){
         return 1;
     }
 
-
     printf(
         "%d\n",
-        yar_match_full(regex, "R$1.254")
+        yar_match_full(regex, "R$1.254,00")
     );
 
     printf(
@@ -26,7 +25,7 @@ int main(){
         yar_search(regex, "R$12akjk1aaR$123[0,9]")
     );
 
-    char *text = "12132lklaadpalkpsdl1";
+    char *text = "1213R$2lklaadpalkpsdl1";
     YarSlice slice = yar_capture(regex, text);
 
     printf(

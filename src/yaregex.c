@@ -159,7 +159,7 @@ int yar_search(
 
         if (
             !curr_state->transitions
-        ) return curr_state->is_final;
+        ) break;
 
         for (
             int transition_idx = 0;
@@ -179,14 +179,13 @@ int yar_search(
             
             valid_transition = 1;
             curr_state = curr_transition->dest;
-
             break;
         }
 
         if (
             !valid_transition &&
             curr_state->is_final
-        ) return 1;
+        ) break;
 
     }
 
@@ -236,19 +235,7 @@ YarSlice yar_capture(
         if (
             !curr_state->transitions &&
             curr_state->is_final
-        ) {
-            
-            if (
-                !first_valid_idx
-            ){
-                slice.end = text_idx - 1;
-                saved_idx = text_idx;
-            }
-            else {
-                slice.start = 0;
-            }
-            return slice;
-        };
+        ) break;
 
         for (
             int transition_idx = 0;
@@ -285,11 +272,7 @@ YarSlice yar_capture(
             if (
                 curr_state->is_final && 
                 !first_valid_idx
-            ) {
-                slice.end = text_idx - 1;
-                saved_idx = text_idx;
-                return slice;
-            }
+            ) break;
 
             first_valid_idx = 1;
         }
