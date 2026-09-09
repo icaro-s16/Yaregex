@@ -183,6 +183,11 @@ int yar_search(
             break;
         }
 
+        if (
+            !valid_transition &&
+            curr_state->is_final
+        ) return 1;
+
     }
 
     return curr_state->is_final;

@@ -448,8 +448,8 @@ Token backslash_handler(
     case '*': case '+': case '\\': case '|': case '.': case '(': 
     case ')': case '^': case '$': case '[': case ']': case '{':
     case '}':
-        token.ch    = curr;
-        return token;
+        symbol.ch = curr;
+        return symbol;
     default:{
         Token concat = {
             .class  = CONCAT
