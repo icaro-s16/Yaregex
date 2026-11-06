@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "yar_parser.h"
+#include "parser.h"
 
 #ifdef YAR_DEBUG
 
@@ -8,7 +8,7 @@
  * Each node is printed with its number 
  * of children.
  */
-void yar_print_ast(
+void print_ast(
     AstNode *root
 ){
     assert(
@@ -54,7 +54,7 @@ void yar_print_ast(
 
         printf(
             "%s{%d}%c", 
-            yar_token_to_string(
+            token_to_string(
                 curr.op
             ), 
             counter, 
@@ -106,7 +106,7 @@ void yar_print_ast(
  * If the result is non-zero, that specific ERROR occurred.
  * 
  */
-AstNode* yar_ast_construct(
+AstNode* ast_construct(
     Vector      *tokens,
     uint8_t     *err
 ){
@@ -136,7 +136,7 @@ AstNode* yar_ast_construct(
         if (
             root
         ){
-            yar_ast_destroy(
+            ast_destroy(
                 root
             );
         }
@@ -147,7 +147,7 @@ AstNode* yar_ast_construct(
     return root;
 }
 
-void yar_ast_destroy(
+void ast_destroy(
     AstNode *root
 ){
     assert(
@@ -157,14 +157,14 @@ void yar_ast_destroy(
     if (
         root->left
     ){
-        yar_ast_destroy(
+        ast_destroy(
             root->left
         );
     }
     if (
         root->right
     ){
-        yar_ast_destroy(
+        ast_destroy(
             root->right
         );
     }
@@ -327,7 +327,7 @@ static AstNode* alternation_expr(
         if (
             new_left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 new_left
             );
         }
@@ -335,7 +335,7 @@ static AstNode* alternation_expr(
         if (
             right
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 right
             );
         }
@@ -343,7 +343,7 @@ static AstNode* alternation_expr(
         if (
             left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
@@ -408,7 +408,7 @@ static AstNode* concatenation_expr(
         if (
             new_left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 new_left
             );
         }
@@ -416,7 +416,7 @@ static AstNode* concatenation_expr(
         if (
             right
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 right
             );
         }
@@ -424,7 +424,7 @@ static AstNode* concatenation_expr(
         if (
             left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
@@ -483,7 +483,7 @@ static AstNode* translate_quantifier_exact(
 
     }
 
-    yar_ast_destroy(
+    ast_destroy(
         copy_node
     );
 
@@ -494,7 +494,7 @@ static AstNode* translate_quantifier_exact(
         if (
             copy_node
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 copy_node
             );
         }
@@ -502,7 +502,7 @@ static AstNode* translate_quantifier_exact(
         if (
             new_left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 new_left
             );
         }
@@ -510,7 +510,7 @@ static AstNode* translate_quantifier_exact(
         if (
             right
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 right
             );
         }
@@ -518,7 +518,7 @@ static AstNode* translate_quantifier_exact(
         if (
             left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
@@ -589,28 +589,28 @@ static AstNode* translate_quantifier_min(
         if (
             left 
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
         if (
             new_left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 new_left
             );
         }
         if (
             new_right
         ){
-            yar_ast_destroy(
+            ast_destroy(
                 new_right
             );
         }
         if (
             copy_node
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 copy_node
             );
         }
@@ -712,7 +712,7 @@ static AstNode* trasnlate_ranged_quantifier(
         left = new_left;
     }
 
-    yar_ast_destroy(
+    ast_destroy(
         copy_node
     );
 
@@ -723,28 +723,28 @@ static AstNode* trasnlate_ranged_quantifier(
         if ( 
             copy_node
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 copy_node
             );
         }
         if (
             new_left
         ){
-            yar_ast_destroy(
+            ast_destroy(
                 new_left
             );
         }
         if (
             right
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 right
             );
         }
         if (
             left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
@@ -800,28 +800,28 @@ static AstNode* translate_plus_quantifier(
         if ( 
             copy_node
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 copy_node
             );
         }
         if (
             new_left
         ){
-            yar_ast_destroy(
+            ast_destroy(
                 new_left
             );
         }
         if (
             right
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 right
             );
         }
         if (
             left
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
@@ -882,12 +882,6 @@ static AstNode* quantifier_expr(
             break;
         case QUANTIFIER_MIN:
             left = translate_quantifier_min(
-                left,
-                curr
-            );
-            break;
-        case RANGED_QUANTIFIER:
-            left = trasnlate_ranged_quantifier(
                 left,
                 curr
             );
@@ -1155,7 +1149,7 @@ static AstNode* create_special_symbols_node(
     AstNode *initial_node
 ) {
     assert(
-        end > start
+        end >= start
     );
 
     Token pipe = {
@@ -1245,7 +1239,7 @@ static AstNode* create_special_symbols_node(
         if (
             left 
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 left
             );
         }
@@ -1253,7 +1247,7 @@ static AstNode* create_special_symbols_node(
         if (
             right
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 right
             );
         }
@@ -1261,7 +1255,7 @@ static AstNode* create_special_symbols_node(
         if (
             aux 
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 aux
             );
         }
@@ -1272,27 +1266,39 @@ static AstNode* create_special_symbols_node(
 static AstNode* translate_special_symbols(
     const Token special_symbol
 ){
-    Token pipe = {
-        .class = PIPE
-    };
-
     AstNode *node = NULL, *aux = NULL;
 
     switch (
         special_symbol.class
     )
     {
-    case RANGED_CHAR:
-        node = create_special_symbols_node(
-            special_symbol.start,
-            special_symbol.end,
-            NULL
-        );
+    case SYMBOLS_GROUP:
 
-        if (
-            !node 
-        ) goto invalid_alloc;
+        for (int i = 0; i < vector_get_size(special_symbol.group); i++){
+            Token *curr = vector_get(special_symbol.group, i);
 
+            if (curr->class == RANGED_CHAR){
+                aux = create_special_symbols_node(
+                    curr->start,
+                    curr->end,
+                    node
+                );
+
+            }
+            else {
+                aux = create_special_symbols_node(
+                    curr->ch,
+                    curr->ch,
+                    node
+                );
+
+            }
+
+            node = aux;
+            if (
+                !aux
+            ) goto invalid_alloc;
+        }
         return node;
 
     case ANY_DIGIT:    
@@ -1308,7 +1314,7 @@ static AstNode* translate_special_symbols(
 
         return node;
     
-        case ANY_NON_DIGIT:
+    case ANY_NON_DIGIT:
         node = create_special_symbols_node(
             0,
             47,
@@ -1409,7 +1415,7 @@ static AstNode* translate_special_symbols(
         if (
             aux 
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 aux
             );
         }
@@ -1417,7 +1423,7 @@ static AstNode* translate_special_symbols(
         if (
             node
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 node
             );
         }

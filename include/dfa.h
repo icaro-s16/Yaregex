@@ -1,6 +1,6 @@
 #pragma once
 
-#include "yar_nfa.h"
+#include "nfa.h"
 
 typedef struct{
     uint8_t     is_final;
@@ -13,11 +13,11 @@ typedef struct{
     SUnion       *dest;
 }SUTransition;
 
-int yar_dfa_match(FSM *dfa, const char *text);
+int dfa_match(FSM *dfa, const char *text);
 
-FSM yar_dfa_construct(const char *pattern, uint8_t *err);
+FSM dfa_construct(const char *pattern, uint8_t *err);
 
-void yar_dfa_destroy(FSM *dfa);
+void dfa_destroy(FSM *dfa);
 
 static int sunion_compare(SUnion *su1, SUnion *su2);
 

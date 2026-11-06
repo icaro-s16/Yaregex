@@ -1,6 +1,6 @@
-#include "yar_nfa.h"
+#include "nfa.h"
 
-FSM yar_nfa_construct(
+FSM nfa_construct(
     const char  *pattern,
     uint8_t     *err
 ){
@@ -15,7 +15,7 @@ FSM yar_nfa_construct(
 
     AstNode *root = NULL;
     
-    Vector *tokens = yar_scan(
+    Vector *tokens = scan(
         pattern,
         err
     );
@@ -35,12 +35,12 @@ FSM yar_nfa_construct(
         goto invalid_alloc;
     }
 
-    root = yar_ast_construct(
+    root = ast_construct(
         tokens,
         err
     );
 
-    vector_destroy(
+    destroy_tokens_vector(
         tokens
     );
     
@@ -56,7 +56,7 @@ FSM yar_nfa_construct(
         err
     );
 
-    yar_ast_destroy(
+    ast_destroy(
         root
     );
 
@@ -94,14 +94,14 @@ FSM yar_nfa_construct(
             .states         = states
         };
 
-        yar_nfa_destroy(
+        nfa_destroy(
             &nfa
         );
 
         if (
             root 
         ) {
-            yar_ast_destroy(
+            ast_destroy(
                 root
             );
         }
@@ -109,7 +109,7 @@ FSM yar_nfa_construct(
         if (
             tokens
         ) {
-            vector_destroy(
+            destroy_tokens_vector(
                 tokens
             );
         }
@@ -117,7 +117,7 @@ FSM yar_nfa_construct(
         return (FSM){0};
 }
 
-void yar_nfa_destroy(
+void nfa_destroy(
     FSM *nfa
 ){
     assert(

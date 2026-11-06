@@ -1,6 +1,6 @@
 #pragma once 
 
-#include "yar_parser.h"
+#include "parser.h"
 
 typedef struct{
     uint8_t is_final;
@@ -45,9 +45,9 @@ typedef struct{
     Vector *states;
 }FSM;
 
-FSM yar_nfa_construct(const char *pattern, uint8_t *err);
+FSM nfa_construct(const char *pattern, uint8_t *err);
 
-void yar_nfa_destroy(FSM *nfa);
+void nfa_destroy(FSM *nfa);
 
 static int alphabet_contains_char(const char ch, Vector *alphabet);
 

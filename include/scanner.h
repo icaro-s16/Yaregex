@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include "vector.h"
-#include "yar_err_flags.h"
+#include "err_flags.h"
 
 #define CHAR_TOKENS(X)          \
     X(OPEN_PARENTHESES, '(')    \
@@ -14,7 +14,8 @@
     X(WILDCARD, '.')
 
 #define STR_TOKENS(X)               \
-    X(RANGED_CHAR, "[%c-%c]")       \
+    X(RANGED_CHAR, "%c-%c")         \
+    X(SYMBOLS_GROUP, "[...]")       \
     X(ANY_DIGIT, "\\d")             \
     X(ANY_NON_DIGIT, "\\D")         \
     X(ANY_WHITESPACE, "\\s")        \
@@ -45,6 +46,7 @@ typedef struct{
             int start, end;
         };
         char ch;
+        Vector *group;
     };
 }Token;
 
@@ -59,11 +61,13 @@ typedef struct{
 
 #ifdef YAR_DEBUG
 
-const char* yar_token_to_string(Token token);
+const char* token_to_string(Token token);
 
 #endif
 
-Vector* yar_scan(const char *pattern, uint8_t *err);
+void destroy_tokens_vector(Vector* tokens);
+
+Vector* scan(const char *pattern, uint8_t *err);
 
 int is_terminal_token(const Token token);
 

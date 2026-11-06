@@ -2,13 +2,13 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
-#include "yar_scanner.h"
+#include "scanner.h"
 
-/* NOTE: Private foward declaration from "yar_token_handler.h" */
+/* NOTE: Private foward declaration from "token_handler.h" */
 
 Token char_tokens_handler(Scanner *scanner);
 
-Token ranged_char_handler(Scanner *scanner);
+Token symbols_group_handler(Scanner *scanner);
 
 Token quantifier_handler(Scanner *scanner);
 
@@ -21,7 +21,7 @@ Token backslash_handler(Scanner *scanner);
  * overflow, so it should be used just in debug 
  * cases.
  */
-const char* yar_token_to_string(
+const char* token_to_string(
     Token token
 ){
     #define TO_STR(X) #X
@@ -126,7 +126,17 @@ const char* yar_token_to_string(
 
 #endif
 
-Vector* yar_scan(
+void destroy_tokens_vector(Vector* tokens){
+    if (!tokens) return;
+    for (int i = 0; i < vector_get_size(tokens); i++){
+        Token *curr = vector_get(tokens, i);
+        if (curr->class == SYMBOLS_GROUP && curr->group)
+            vector_destroy(curr->group);
+    }
+    vector_destroy(tokens);
+}
+
+Vector* scan(
     const char* pattern,
     uint8_t     *err
 ){
@@ -170,7 +180,7 @@ Vector* yar_scan(
     if (
         scanner.state 
     ) {
-        vector_destroy(
+        destroy_tokens_vector(
             scanner.tokens
         );
         *err |= scanner.state;
@@ -190,7 +200,8 @@ int is_terminal_token(
         token.class == ANY_WHITESPACE      ||
         token.class == ANY_NON_WHITESPACE  ||
         token.class == RANGED_CHAR         ||
-        token.class == WILDCARD
+        token.class == WILDCARD            ||
+        token.class == SYMBOLS_GROUP    
     );
 }
 
@@ -202,8 +213,7 @@ int is_quantifier_token(
         token.class == PLUS              ||
         token.class == QMARK             ||
         token.class == QUANTIFIER_EXACT  ||
-        token.class == QUANTIFIER_MIN    ||
-        token.class == RANGED_QUANTIFIER      
+        token.class == QUANTIFIER_MIN    
     );
 }
 
@@ -326,7 +336,7 @@ static int scanner_consume(
         break;
     }
     case '[':{
-        Token token = ranged_char_handler(
+        Token token = symbols_group_handler(
             scanner
         );
         if (

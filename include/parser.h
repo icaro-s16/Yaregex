@@ -1,6 +1,6 @@
 #pragma once
 
-#include "yar_scanner.h"
+#include "scanner.h"
 
 typedef struct AstNode AstNode;
 struct AstNode{
@@ -16,13 +16,13 @@ typedef struct{
 
 #ifdef YAR_DEBUG
 
-void yar_print_ast(AstNode *root);
+void print_ast(AstNode *root);
 
 #endif
 
-AstNode* yar_ast_construct(Vector *tokens, uint8_t *err);
+AstNode* ast_construct(Vector *tokens, uint8_t *err);
 
-void yar_ast_destroy(AstNode *root);
+void ast_destroy(AstNode *root);
 
 static AstNode* clone_ast(AstNode* root);
 

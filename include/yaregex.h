@@ -1,7 +1,6 @@
 #pragma once 
 
 #include <stdint.h>
-#include "yar_err_flags.h"
 
 struct FSM;
 

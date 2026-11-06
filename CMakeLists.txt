@@ -31,12 +31,12 @@ FetchContent_MakeAvailable(cunit)
 
 set(
     LIB_SRC
-    src/yar_scanner.c
-    src/yar_parser.c
-    src/yar_nfa.c
-    src/yar_token_handler.c
+    src/scanner.c
+    src/parser.c
+    src/nfa.c
+    src/token_handlers.c
     src/vector.c
-    src/yar_dfa.c
+    src/dfa.c
     src/yaregex.c
 )
 

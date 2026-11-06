@@ -1,5 +1,5 @@
 #include <ctype.h>
-#include "yar_token_handler.h"
+#include "token_handlers.h"
 
 Token char_tokens_handler(
     Scanner *scanner
@@ -34,8 +34,130 @@ Token char_tokens_handler(
         };
     }
 }
+
+Vector* ranged_char_handler(
+    Scanner *scanner
+){
+    assert(
+        scanner &&
+        scanner->tape
+    );
+
+    Token symbol = {
+        .class  = SYMBOL
+    };
+
+    Vector *symbols = vector_construct(
+        sizeof(Token)
+    );
+
+    Token token = {
+        .class = RANGED_CHAR
+    };
+
+    if (
+        !symbols
+    ) goto invalid_alloc;
+
+    char curr = scanner->tape[
+        scanner->index
+    ];
+
+    int err = 0;
+
+    if (
+        !isalnum(curr)
+    ){
+        return symbols;
+    }
+
+    symbol.ch = curr;
+    err = append_symbols(
+        symbols,
+        symbol
+    );
+
+    if (
+        err 
+    ) goto invalid_alloc;
+
+    token.start = (int)curr;
+    curr = scanner->tape[
+        ++scanner->index
+    ];
+
+    if (
+        curr != '-'
+    ){
+        return symbols;
+    }
+
+    symbol.ch = curr;
+    err = append_symbols(
+        symbols,
+        symbol
+    );
+
+    if (
+        err 
+    ) goto invalid_alloc;
+
+    curr = scanner->tape[
+        ++scanner->index
+    ];
+
+    if (
+        !isalnum(curr)
+    ){
+        return symbols;
+    }
+
+    symbol.ch = curr;
+    err = append_symbols(
+        symbols,
+        symbol
+    );
+
+    if (
+        err 
+    ) goto invalid_alloc;
+
+    token.end = (int)curr;
+    curr = scanner->tape[
+        ++scanner->index
+    ];
+
+    destroy_tokens_vector(symbols);
+
+    symbols = vector_construct(sizeof(Token));
+
+    if (
+        !symbols ||
+        vector_append(&symbols, &token, sizeof(Token)) != 0 
+    ) goto invalid_alloc;
     
-Token ranged_char_handler(
+    scanner->state |= (
+        token.start >= token.end 
+    ) ? SCANNER_INVALID_RANGED_CHAR : scanner->state;
+
+    return symbols;
+
+    invalid_alloc:
+
+        if (
+            symbols
+        ) {
+            destroy_tokens_vector(
+                symbols
+            );
+        }
+
+        scanner->state |= YAR_INVALID_ALLOC;
+
+        return NULL;
+}
+
+Token symbols_group_handler(
     Scanner *scanner
 ){
     assert(
@@ -56,8 +178,13 @@ Token ranged_char_handler(
     ) goto invalid_alloc;
 
     Token token = {
-        .class = RANGED_CHAR
+        .class = SYMBOLS_GROUP,
+        .group = vector_construct(sizeof(Token))
     };
+
+    if (!token.group ) 
+        goto invalid_alloc;
+    
 
     char curr = scanner->tape[
         scanner->index
@@ -72,121 +199,73 @@ Token ranged_char_handler(
         if (
             curr == '\0'
         ) symbol.class = EOT;
-        vector_destroy(
+        destroy_tokens_vector(
             symbols
         );
         return symbol;
     }
 
     symbol.ch = curr;
-    err = handler_append_symbol(
+    err = append_symbols(
         symbols,
         symbol
     );
 
-    if (
-        err 
-    ) goto invalid_alloc;
+    if (err) 
+        goto invalid_alloc;
 
     curr = scanner->tape[
         ++scanner->index
     ];
+    
+    while (curr != ']') {
+        if (scanner->index > scanner->tape_size) {
+            if (vector_concat(&scanner->tokens, symbols) != 0 )
+                goto invalid_alloc;
+            destroy_tokens_vector(symbols);
+            symbol.class = EOT;
+            return symbol;
+        }
 
-    if (
-        !isalnum(curr)
-    ){
-        return handle_invalid_operation_syntax(
-            scanner,
-            symbols,
-            curr
-        );
+        if (isalnum(curr)) {
+            Vector *_symbols = ranged_char_handler(scanner);
+            if (
+                _symbols &&
+                vector_concat(&symbols, _symbols) != 0 ||
+                vector_concat(&token.group, _symbols) != 0
+            ) { 
+                goto invalid_alloc;
+            }
+            else if (!_symbols){
+                goto invalid_alloc;
+            }
+            destroy_tokens_vector(_symbols);
+        }
+        else {
+            Token _token = {
+                .class = SYMBOL,
+                .ch = curr
+            };
+
+            symbol.ch = curr;
+
+            if (
+                vector_append(&token.group, &_token, sizeof(Token)) != 0 ||
+                append_symbols(symbols, symbol)
+            )  goto invalid_alloc;
+
+            scanner->index ++;
+        }
+
+        curr = scanner->tape[
+            scanner->index
+        ];
     }
+    
 
-    symbol.ch = curr;
-    err = handler_append_symbol(
-        symbols,
-        symbol
-    );
-
-    if (
-        err 
-    ) goto invalid_alloc;
-
-    token.start = (int)curr;
-    curr = scanner->tape[
-        ++scanner->index
-    ];
-    if (
-        curr != '-'
-    ){
-        return handle_invalid_operation_syntax(
-            scanner,
-            symbols,
-            curr
-        );
-    }
-
-    symbol.ch = curr;
-    err = handler_append_symbol(
-        symbols,
-        symbol
-    );
-
-    if (
-        err 
-    ) goto invalid_alloc;
-
-    curr = scanner->tape[
-        ++scanner->index
-    ];
-
-    if (
-        !isalnum(curr)
-    ){
-        return handle_invalid_operation_syntax(
-            scanner,
-            symbols,
-            curr
-        );
-    }
-
-    symbol.ch = curr;
-    err = handler_append_symbol(
-        symbols,
-        symbol
-    );
-
-    if (
-        err 
-    ) {
-        vector_destroy(
-            symbols
-        );
-
-        return (Token){0};
-    }
-
-    token.end = (int)curr;
-    curr = scanner->tape[
-        ++scanner->index
-    ];
-
-    if (
-        curr != ']'
-    ){
-        return handle_invalid_operation_syntax(
-            scanner,
-            symbols,
-            curr
-        );
-    }
-    vector_destroy(
+    destroy_tokens_vector(
         symbols
     );
-
-    scanner->state |= (
-        token.start >= token.end 
-    ) ? SCANNER_INVALID_RANGED_CHAR : scanner->state;
 
     return token;
 
@@ -195,8 +274,16 @@ Token ranged_char_handler(
         if (
             symbols
         ) {
-            vector_destroy(
+            destroy_tokens_vector(
                 symbols
+            );
+        }
+
+        if (
+            token.group
+        ) {
+            destroy_tokens_vector(
+                token.group
             );
         }
 
@@ -234,8 +321,7 @@ Token quantifier_handler(
     if (
         curr != '{'
     ) {
-        symbol.ch = curr;
-        vector_destroy(
+        destroy_tokens_vector(
             symbols
         );
 
@@ -248,7 +334,7 @@ Token quantifier_handler(
     }
     
     symbol.ch = curr; 
-    err = handler_append_symbol(
+    err = append_symbols(
         symbols,
         symbol
     );
@@ -264,7 +350,7 @@ Token quantifier_handler(
     if (
         !isdigit(curr)
     ){
-        return handle_invalid_operation_syntax(
+        return invalid_syntax(
             scanner,
             symbols,
             curr
@@ -289,7 +375,7 @@ Token quantifier_handler(
     if (
         curr == '}'
     ){
-        vector_destroy(
+        destroy_tokens_vector(
             symbols
         );
 
@@ -303,7 +389,7 @@ Token quantifier_handler(
     if (
         curr != ','
     ){
-        return handle_invalid_operation_syntax(
+        return invalid_syntax(
             scanner,
             symbols,
             curr
@@ -311,7 +397,7 @@ Token quantifier_handler(
     }
     
     symbol.ch = curr; 
-    err = handler_append_symbol(
+    err = append_symbols(
         symbols,
         symbol
     );
@@ -326,7 +412,7 @@ Token quantifier_handler(
     if (
         curr == '}'
     ){  
-        vector_destroy(
+        destroy_tokens_vector(
             symbols
         );
 
@@ -340,7 +426,7 @@ Token quantifier_handler(
     if (
         !isdigit(curr)
     ){
-        return handle_invalid_operation_syntax(
+        return invalid_syntax(
             scanner,
             symbols,
             curr
@@ -365,13 +451,13 @@ Token quantifier_handler(
     if (
         curr != '}'
     ){
-        return handle_invalid_operation_syntax(
+        return invalid_syntax(
             scanner,
             symbols,
             curr
         );
     }
-    vector_destroy(
+    destroy_tokens_vector(
         symbols
     );
 
@@ -390,7 +476,7 @@ Token quantifier_handler(
         if (
             symbols 
         ){
-            vector_destroy(
+            destroy_tokens_vector(
                 symbols
             );
         }
@@ -542,7 +628,7 @@ static void append_number_symbols(
             .ch     = curr
         };
 
-        err = handler_append_symbol(
+        err = append_symbols(
             symbols,
             symbol
         );
@@ -561,7 +647,7 @@ static void append_number_symbols(
 
 }
 
-static int handler_append_symbol(
+static int append_symbols(
     Vector  *tokens, 
     Token   symbol
 ){
@@ -605,7 +691,7 @@ static int handler_append_symbol(
         return YAR_INVALID_ALLOC;
 }
 
-static Token handle_invalid_operation_syntax(
+static Token invalid_syntax(
     Scanner *scanner,
     Vector  *symbols,
     char   curr
@@ -656,7 +742,7 @@ static Token handle_invalid_operation_syntax(
         );                                                      
     }
 
-    vector_destroy(                                             
+    destroy_tokens_vector(                                             
         symbols                                                 
     );                    
     symbols = NULL;
@@ -677,7 +763,7 @@ static Token handle_invalid_operation_syntax(
         if (
             symbols
         ) {
-            vector_destroy(
+            destroy_tokens_vector(
                 symbols
             );
         }

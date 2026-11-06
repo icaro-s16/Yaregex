@@ -1,8 +1,8 @@
-#include "yar_dfa.h"
+#include "dfa.h"
 #include <stdio.h>
 
 
-FSM yar_dfa_construct(
+FSM dfa_construct(
     const char  *pattern, 
     uint8_t     *err
 ){
@@ -16,11 +16,11 @@ FSM yar_dfa_construct(
             pattern
         ) 
     ) {
-        *err |= YAR_INVALID_PATTERN;
+        *err |=YAR_INVALID_PATTERN;
         return (FSM){0};
     }
 
-    FSM nfa = yar_nfa_construct(
+    FSM nfa = nfa_construct(
         pattern,
         err
     );
@@ -43,14 +43,14 @@ FSM yar_dfa_construct(
         sunions
     );
 
-    yar_nfa_destroy(
+    nfa_destroy(
         &nfa
     );
 
     return dfa;
 }
 
-void yar_dfa_destroy(
+void dfa_destroy(
     FSM *dfa
 ){
     assert(
@@ -284,7 +284,7 @@ static Vector* sunions_construct(
             );
         }
 
-        *err |= YAR_INVALID_ALLOC;
+        *err |=YAR_INVALID_ALLOC;
         return NULL;
 }
 
@@ -488,7 +488,7 @@ static FSM sunions_to_dfa(
                 .states = states
             };
 
-            yar_dfa_destroy(
+            dfa_destroy(
                 &fsm
             );
         }

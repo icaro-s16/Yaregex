@@ -1,5 +1,5 @@
 #include "yaregex.h"
-#include "yar_dfa.h"
+#include "dfa.h"
 
 YaRegex* yar_construct(
     const char  *pattern,
@@ -36,7 +36,7 @@ YaRegex* yar_construct(
         goto invalid_alloc;
     };
 
-    FSM fsm = yar_dfa_construct(
+    FSM fsm = dfa_construct(
         pattern,
         err
     );
@@ -74,7 +74,7 @@ void yar_destroy(
         regex->dfa
     );
 
-    yar_dfa_destroy(
+    dfa_destroy(
         (FSM*)regex->dfa
     );
 
