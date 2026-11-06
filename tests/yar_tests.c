@@ -4,7 +4,7 @@
 int main(){
     uint8_t err = 0;
     YaRegex *regex = yar_construct(
-        "", 
+        "($|[rR]$)?(\\d|[1-9]\\d*)([,\\.]\\d*)?", 
         &err
     );
 
@@ -15,7 +15,7 @@ int main(){
         return 1;
     }
 
-    printf("%d\n", yar_match_full(regex, "0.99"));
+    printf("%s\n", (yar_match_full(regex, "r$1230,123"))?"True":"False");
 
 
     return 0;

@@ -37,12 +37,13 @@ The precedence matches the position in the list, so 1 has the highest precedence
 
 My regex implements some special symbols, which are:
 
-1. `[start-end]`: Match any alphanumeric symbol between the start and end. It follows the ASCII order of symbols, so the start must be lower than the end.
-2. `\d`: Match any digit.
-3. `\D`: Match any non-digit.
-4. `\s`: Match any whitespace.
-5. `\S`: Match any non-whitespace.
-6. `.`: Match any symbol between 0 and 127 in the ASCII table.
+1. `[...]` : Matches any symbol inside that group.
+2. `start-end` : Matches any ASCII char >= start and <= end, but it can only be used inside a group.
+3. `\d`: Match any digit.
+4. `\D`: Match any non-digit.
+5. `\s`: Match any whitespace.
+6. `\S`: Match any non-whitespace.
+7. `.`: Match any symbol between 0 and 127 in the ASCII table.
 
 **Note:** I used a naive approach for these special symbols by converting them into alternations. Because of this, symbols with large ranges like `.` can slow down the compilation of the regex.
 
